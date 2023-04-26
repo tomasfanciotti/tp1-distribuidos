@@ -1,0 +1,19 @@
+# Mac
+**.DS_Store
+
+# IDE
+.idea/
+
+# python
+**/__pycache__/
+
+# Executables
+bin/
+
+# generated files
+docker-compose-gen.yaml
+server/network
+server/bets.csv
+
+# Enviromen configuration
+**/.env
