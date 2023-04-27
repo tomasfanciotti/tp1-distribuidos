@@ -57,6 +57,10 @@ func NewPacket(opcode int, data interface{}) *Packet {
 	return &Packet{opcode, len(encoded), encoded}
 }
 
+func (p *Packet) get() interface{} {
+	return decode(p.data)
+}
+
 // Implementation of the TLV messaging protocol over TCP sockets.
 
 // Upper layer

@@ -2,7 +2,7 @@ import socket
 import logging
 import signal
 from .messaging_protocol import Packet, receive, send
-from .analyzer import handle_wheather, handle_stations, handle_trips
+from .analyzer import handle_wheather, handle_stations, handle_trips, handle_query_1
 import concurrent
 from concurrent.futures import ThreadPoolExecutor
 
@@ -18,7 +18,9 @@ OP_CODE_INGEST_WEATHER = 3
 OP_CODE_INGEST_STATIONS = 4
 OP_CODE_INGEST_TRIPS = 5
 OP_CODE_ACK = 6
-OP_CODE_ERROR = 7
+OP_CODE_QUERY1 = 7
+OP_CODE_RESPONSE_QUERY1 = 8
+OP_CODE_ERROR = 9
 
 
 class Server:
@@ -94,6 +96,17 @@ class Server:
                     else:
                         send(client_sock, Packet.new(OP_CODE_ACK, "ACK!"))
                         logging.info(f'action: ingest_strips | result: success | client: {addr[0]} | msg: trips ingested correctly.')
+
+                elif packet.opcode == OP_CODE_QUERY1:
+
+                    data = packet.get()
+                    result = handle_query_1()
+                    if result is None:
+                        send(client_sock, Packet.new(OP_CODE_ERROR, "No seras muy fantaseosa vos?"))
+                        logging.error(f'action: query #1 | result: fail | client: {addr[0]} | msg: Error in the retreival of query #1.')
+                    else:
+                        send(client_sock, Packet.new(OP_CODE_RESPONSE_QUERY1, result))
+                        logging.info(f'action: query #1 | result: success | client: {addr[0]} | msg: query #1 retreived correctly.')
 
                 elif packet.opcode == OP_CODE_ZERO:
                     logging.info(f'action: disconnected | result: success | ip: {addr[0]}')

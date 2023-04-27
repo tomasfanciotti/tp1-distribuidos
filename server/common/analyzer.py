@@ -56,3 +56,6 @@ def handle_trips(data):
 
     return True
 
+
+def handle_query_1():
+    return None

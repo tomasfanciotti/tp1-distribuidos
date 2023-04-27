@@ -222,6 +222,11 @@ func (c *Client) Start() {
 	}
 	log.Infof("action: send_trips | result: success | client_id: %v | msg: sent %v trips batchs.", c.config.ID, registers)
 
+	_, err := c.analyzer.Query1()
+	if err != nil {
+		log.Errorf("action: query #1 | result: fail | client_id: %v | msg: %v", c.config.ID, err)
+	}
+
 	// End
 	log.Infof("action: execution | result: success | client_id: %v", c.config.ID)
 

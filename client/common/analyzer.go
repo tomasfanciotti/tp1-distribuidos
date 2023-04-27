@@ -15,6 +15,9 @@ const (
 	OP_CODE_INGEST_STATIONS = 4
 	OP_CODE_INGEST_TRIPS    = 5
 	OP_CODE_ACK             = 6
+	OP_CODE_QUERY1          = 7
+	OP_CODE_RESPONSE_QUERY1 = 8
+	OP_CODE_ERROR           = 9
 )
 
 // Bike Rides Analyzer Interface
@@ -135,6 +138,25 @@ func (bra *BikeRidesAnalyzer) IngestTrip(data []BatchUnitData) (bool, error) {
 	}
 
 	return true, nil
+
+}
+
+func (bra *BikeRidesAnalyzer) Query1() (string, error) {
+
+	new_packet := NewPacket(OP_CODE_QUERY1, "Decime query 1 plis")
+	Send(*bra.conn, new_packet)
+
+	packet_response, err := Receive(*bra.conn)
+
+	if err != nil {
+		return "", err
+	}
+
+	if packet_response.opcode != OP_CODE_RESPONSE_QUERY1 {
+		return "", errors.New("servidor NO devolvió OPCODE esperado. Obtenido: " + string(rune(packet_response.opcode)) + " - " + string(packet_response.data))
+	}
+
+	return string(packet_response.data), nil
 
 }
 
