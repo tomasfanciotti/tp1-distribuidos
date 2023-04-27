@@ -25,6 +25,7 @@ type ClientConfig struct {
 	LoopPeriod    time.Duration
 	WetherFile    string
 	StationsFile  string
+	TripsFile     string
 }
 
 // Client Entity that encapsulates how
@@ -126,11 +127,11 @@ func ingestWeatherHandler(c *Client, batch []BatchUnitData) bool {
 
 	_, err := c.analyzer.IngestWeather(batch)
 	if err != nil {
-		log.Errorf("action: send_batch | result: fail | err: %s", err)
+		log.Errorf("action: ingest_weather_batch | result: fail | err: %s", err)
 		return false
 	}
 
-	log.Infof("action: ingest_weather | result: success | client_id: %v  | msg: Batch de %v ", c.config.ID, len(batch))
+	log.Infof("action: ingest_weather_handler | result: success | client_id: %v  | msg: Batch de %v weathers.", c.config.ID, len(batch))
 	return true
 }
 
@@ -138,11 +139,23 @@ func ingestStationHandler(c *Client, batch []BatchUnitData) bool {
 
 	_, err := c.analyzer.IngestStation(batch)
 	if err != nil {
-		log.Errorf("action: send_batch | result: fail | err: %s", err)
+		log.Errorf("action: ingest_station_batch | result: fail | err: %s", err)
 		return false
 	}
 
-	log.Infof("action: ingest_station | result: success | client_id: %v  | msg: Batch de %v ", c.config.ID, len(batch))
+	log.Infof("action: ingest_station_handler | result: success | client_id: %v  | msg: Batch de %v stations.", c.config.ID, len(batch))
+	return true
+}
+
+func ingestTripsHandler(c *Client, batch []BatchUnitData) bool {
+
+	_, err := c.analyzer.IngestTrip(batch)
+	if err != nil {
+		log.Errorf("action: ingest_trip_batch | result: fail | err: %s", err)
+		return false
+	}
+
+	log.Infof("action: ingest_trip_handler | result: success | client_id: %v  | msg: Batch de %v trips.", c.config.ID, len(batch))
 	return true
 }
 
@@ -201,6 +214,15 @@ func (c *Client) Start() {
 	}
 	log.Infof("action: send_stations | result: success | client_id: %v | msg: sent %v station batchs.", c.config.ID, registers)
 
+	// Trips
+	registers, result = batchDataProcessor(c, c.config.TripsFile, ingestTripsHandler, 7, "TRIP")
+
+	if !result {
+		log.Warnf("action: send_trips | result: warning | client_id: %v | msg: some trips batch could not be send", c.config.ID)
+	}
+	log.Infof("action: send_trips | result: success | client_id: %v | msg: sent %v trips batchs.", c.config.ID, registers)
+
+	// End
 	log.Infof("action: execution | result: success | client_id: %v", c.config.ID)
 
 }

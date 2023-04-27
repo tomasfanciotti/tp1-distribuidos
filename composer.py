@@ -53,6 +53,7 @@ def generate(clients):
         client_aux["environment"].append(f"CLI_ID={i + 1}")
         client_aux["environment"].append(f"WEATHER_FILE=/app/data/weather.csv")
         client_aux["environment"].append(f"STATIONS_FILE=/app/data/stations.csv")
+        client_aux["environment"].append(f"TRIPS_FILE=/app/data/trips_test.csv")
         services[service_name] = client_aux
 
     config["services"] = services

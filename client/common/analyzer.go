@@ -108,6 +108,36 @@ func (bra *BikeRidesAnalyzer) IngestStation(data []BatchUnitData) (bool, error) 
 
 }
 
+func (bra *BikeRidesAnalyzer) IngestTrip(data []BatchUnitData) (bool, error) {
+
+	arguments := []string{strconv.Itoa(len(data))}
+	for i, v := range data {
+
+		if v.batchType != "TRIP" {
+			return false, errors.New("Tipo de bacth invalido: " + v.batchType)
+		}
+
+		arguments = append(arguments, "@"+strconv.Itoa(i))
+		arguments = append(arguments, v.data...)
+	}
+
+	new_packet := NewPacket(OP_CODE_INGEST_TRIPS, arguments)
+	Send(*bra.conn, new_packet)
+
+	packet_response, err := Receive(*bra.conn)
+
+	if err != nil {
+		return false, err
+	}
+
+	if packet_response.opcode != OP_CODE_ACK {
+		return false, errors.New("servidor NO devolvió ACK")
+	}
+
+	return true, nil
+
+}
+
 /*
 func (l *Lottery) getArgumentsFromBet(bet *Bet) []string {
 

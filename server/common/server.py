@@ -1,8 +1,8 @@
 import socket
 import logging
 import signal
-from .messaging_protocol import Packet, decode, receive, send
-from .analyzer import handle_wheather, handle_stations
+from .messaging_protocol import Packet, receive, send
+from .analyzer import handle_wheather, handle_stations, handle_trips
 import concurrent
 from concurrent.futures import ThreadPoolExecutor
 
@@ -62,7 +62,7 @@ class Server:
                     send(client_sock, Packet.new(OP_CODE_PONG, "Pong!"))
                     logging.info(f'action: ping | result: success | client: {addr[0]} | msg: Ponged successfully.')
 
-                if packet.opcode == OP_CODE_INGEST_WEATHER:
+                elif packet.opcode == OP_CODE_INGEST_WEATHER:
 
                     data = packet.get()
                     result = handle_wheather(data)
@@ -73,7 +73,7 @@ class Server:
                         send(client_sock, Packet.new(OP_CODE_ACK, "ACK!"))
                         logging.info(f'action: ingest_weather | result: success | client: {addr[0]} | msg: Weathers ingested correctly.')
 
-                if packet.opcode == OP_CODE_INGEST_STATIONS:
+                elif packet.opcode == OP_CODE_INGEST_STATIONS:
 
                     data = packet.get()
                     result = handle_stations(data)
@@ -83,6 +83,17 @@ class Server:
                     else:
                         send(client_sock, Packet.new(OP_CODE_ACK, "ACK!"))
                         logging.info(f'action: ingest_stations | result: success | client: {addr[0]} | msg: Stations ingested correctly.')
+
+                elif packet.opcode == OP_CODE_INGEST_TRIPS:
+
+                    data = packet.get()
+                    result = handle_trips(data)
+                    if not result:
+                        send(client_sock, Packet.new(OP_CODE_ERROR, "There was a problem handling trips"))
+                        logging.error(f'action: ingest_trips | result: fail | client: {addr[0]} | msg: Error in the ingestion of trips.')
+                    else:
+                        send(client_sock, Packet.new(OP_CODE_ACK, "ACK!"))
+                        logging.info(f'action: ingest_strips | result: success | client: {addr[0]} | msg: trips ingested correctly.')
 
                 elif packet.opcode == OP_CODE_ZERO:
                     logging.info(f'action: disconnected | result: success | ip: {addr[0]}')
