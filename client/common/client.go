@@ -14,7 +14,7 @@ import (
 
 const (
 	WAITING_PERIOD = 4
-	MAX_BATCH_SIZE = 20
+	MAX_BATCH_SIZE = 2
 )
 
 // ClientConfig Configuration used by the client
@@ -23,7 +23,8 @@ type ClientConfig struct {
 	ServerAddress string
 	LoopLapse     time.Duration
 	LoopPeriod    time.Duration
-	DataPath      string
+	WetherFile    string
+	StationsFile  string
 }
 
 // Client Entity that encapsulates how
@@ -133,6 +134,18 @@ func ingestWeatherHandler(c *Client, batch []BatchUnitData) bool {
 	return true
 }
 
+func ingestStationHandler(c *Client, batch []BatchUnitData) bool {
+
+	_, err := c.analyzer.IngestStation(batch)
+	if err != nil {
+		log.Errorf("action: send_batch | result: fail | err: %s", err)
+		return false
+	}
+
+	log.Infof("action: ingest_station | result: success | client_id: %v  | msg: Batch de %v ", c.config.ID, len(batch))
+	return true
+}
+
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
 
@@ -172,13 +185,21 @@ func (c *Client) Start() {
 
 	c.analyzer = NewAnalyzer(&c.conn)
 
-	registers, result := batchDataProcessor(c, c.config.DataPath, ingestWeatherHandler, 20, "WEATHER")
+	// Weathers
+	registers, result := batchDataProcessor(c, c.config.WetherFile, ingestWeatherHandler, 20, "WEATHER")
 
 	if !result {
 		log.Warnf("action: send_weather | result: warning | client_id: %v | msg: some weather batch could not be send", c.config.ID)
 	}
+	log.Infof("action: send_weather | result: success | client_id: %v | msg: sent %v weather batchs.", c.config.ID, registers)
 
-	log.Infof("action: send_weather | result: success | client_id: %v | msg: sent %v weather registers.", c.config.ID, registers)
+	// Stations
+	registers, result = batchDataProcessor(c, c.config.StationsFile, ingestStationHandler, 5, "STATION")
+
+	if !result {
+		log.Warnf("action: send_stations | result: warning | client_id: %v | msg: some station batch could not be send", c.config.ID)
+	}
+	log.Infof("action: send_stations | result: success | client_id: %v | msg: sent %v station batchs.", c.config.ID, registers)
 
 	log.Infof("action: execution | result: success | client_id: %v", c.config.ID)
 

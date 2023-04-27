@@ -111,15 +111,18 @@ func main() {
 	}
 
 	// Acceder a las variables de entorno
-	dataFiles := os.Getenv("CHUNK_FILE")
-	logrus.Infof("action: load .env | result: success | chunk_file: %s ", dataFiles)
+	WetherFile := os.Getenv("WEATHER_FILE")
+	StationsFile := os.Getenv("STATIONS_FILE")
+	logrus.Infof("action: load .env | result: success | chunk_file: %s ", WetherFile)
+	logrus.Infof("action: load .env | result: success | chunk_file: %s ", StationsFile)
 
 	clientConfig := common.ClientConfig{
 		ServerAddress: v.GetString("server.address"),
 		ID:            v.GetString("id"),
 		LoopLapse:     v.GetDuration("loop.lapse"),
 		LoopPeriod:    v.GetDuration("loop.period"),
-		DataPath:      dataFiles,
+		WetherFile:    WetherFile,
+		StationsFile:  StationsFile,
 	}
 
 	client := common.NewClient(clientConfig)

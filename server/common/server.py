@@ -2,7 +2,7 @@ import socket
 import logging
 import signal
 from .messaging_protocol import Packet, decode, receive, send
-from .analyzer import handle_wheather
+from .analyzer import handle_wheather, handle_stations
 import concurrent
 from concurrent.futures import ThreadPoolExecutor
 
@@ -68,10 +68,21 @@ class Server:
                     result = handle_wheather(data)
                     if not result:
                         send(client_sock, Packet.new(OP_CODE_ERROR, "There was a problem handling weathers"))
-                        logging.error(f'action: ping | result: success | client: {addr[0]} | msg: Error in the ingestion of weathers.')
+                        logging.error(f'action: ingest_weather | result: fail | client: {addr[0]} | msg: Error in the ingestion of weathers.')
                     else:
                         send(client_sock, Packet.new(OP_CODE_ACK, "ACK!"))
-                        logging.info(f'action: ping | result: success | client: {addr[0]} | msg: Weathers ingested correctly.')
+                        logging.info(f'action: ingest_weather | result: success | client: {addr[0]} | msg: Weathers ingested correctly.')
+
+                if packet.opcode == OP_CODE_INGEST_STATIONS:
+
+                    data = packet.get()
+                    result = handle_stations(data)
+                    if not result:
+                        send(client_sock, Packet.new(OP_CODE_ERROR, "There was a problem handling stations"))
+                        logging.error(f'action: ingest_stations | result: fail | client: {addr[0]} | msg: Error in the ingestion of stations.')
+                    else:
+                        send(client_sock, Packet.new(OP_CODE_ACK, "ACK!"))
+                        logging.info(f'action: ingest_stations | result: success | client: {addr[0]} | msg: Stations ingested correctly.')
 
                 elif packet.opcode == OP_CODE_ZERO:
                     logging.info(f'action: disconnected | result: success | ip: {addr[0]}')
