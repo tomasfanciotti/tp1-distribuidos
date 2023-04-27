@@ -3,14 +3,18 @@ package common
 import (
 	"errors"
 	"net"
+	"strconv"
 )
 
 // OpCodes
 const (
-	OP_CODE_ZERO = 0
-	OP_CODE_PING = 1
-	OP_CODE_PONG = 2
-	OP_CODE_ACK  = 3
+	OP_CODE_ZERO            = 0
+	OP_CODE_PING            = 1
+	OP_CODE_PONG            = 2
+	OP_CODE_INGEST_WEATHER  = 3
+	OP_CODE_INGEST_STATIONS = 4
+	OP_CODE_INGEST_TRIPS    = 5
+	OP_CODE_ACK             = 6
 )
 
 // Bike Rides Analyzer Interface
@@ -38,10 +42,40 @@ func (bra *BikeRidesAnalyzer) Ping() (bool, error) {
 	}
 
 	if packet_response.opcode != OP_CODE_PONG {
-		return false, errors.New("Servidor no respondió PONG. OPCODE recivido " + string(packet_response.opcode))
+		return false, errors.New("Servidor no respondió PONG. OPCODE recivido " + string(rune(packet_response.opcode)))
 	}
 
 	return true, nil
+}
+
+func (bra *BikeRidesAnalyzer) IngestWeather(data []BatchUnitData) (bool, error) {
+
+	arguments := []string{strconv.Itoa(len(data))}
+	for i, v := range data {
+
+		if v.batchType != "WEATHER" {
+			return false, errors.New("Tipo de bacth invalido: " + v.batchType)
+		}
+
+		arguments = append(arguments, "@"+strconv.Itoa(i))
+		arguments = append(arguments, v.data...)
+	}
+
+	new_packet := NewPacket(OP_CODE_INGEST_WEATHER, arguments)
+	Send(*bra.conn, new_packet)
+
+	packet_response, err := Receive(*bra.conn)
+
+	if err != nil {
+		return false, err
+	}
+
+	if packet_response.opcode != OP_CODE_ACK {
+		return false, errors.New("servidor NO devolvió ACK")
+	}
+
+	return true, nil
+
 }
 
 /*

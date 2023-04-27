@@ -1,9 +1,11 @@
 package common
 
 import (
+	"bufio"
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 
 const (
 	WAITING_PERIOD = 4
+	MAX_BATCH_SIZE = 20
 )
 
 // ClientConfig Configuration used by the client
@@ -20,13 +23,15 @@ type ClientConfig struct {
 	ServerAddress string
 	LoopLapse     time.Duration
 	LoopPeriod    time.Duration
+	DataPath      string
 }
 
 // Client Entity that encapsulates how
 type Client struct {
-	config  ClientConfig
-	conn    net.Conn
-	running bool
+	config   ClientConfig
+	conn     net.Conn
+	analyzer *BikeRidesAnalyzer
+	running  bool
 }
 
 // NewClient Initializes a new client receiving the configuration
@@ -55,6 +60,54 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
+type BatchUnitData struct {
+	batchType string
+	data      []string
+}
+
+func batchDataProcessor(c *Client, fileName string, handler func(*Client, []BatchUnitData) bool, expected_fields int, batchType string) (int, bool) {
+
+	file, err := os.Open(fileName)
+	if err != nil {
+		log.Errorf("action: open_batch_file | result: fail | err: %s", err)
+		return 0, false
+	}
+	defer file.Close()
+
+	log.Infof("action: batch_data_processor | result: in_progress | msg: Archivo: %v", fileName)
+	scanner := bufio.NewScanner(file)
+	batch := []BatchUnitData{}
+	total_inputs := 0
+	result := true
+
+	for scanner.Scan() {
+
+		campos := strings.Split(strings.TrimRight(scanner.Text(), "\n"), ",")
+
+		if len(campos) != expected_fields {
+			log.Infof("action: scan_batch_file | result: warning | msg: line fields does not match with a expected register. Found: %v in { %v }  ignoring..", len(campos), campos)
+			continue
+		}
+
+		data := BatchUnitData{batchType: batchType, data: campos}
+		batch = append(batch, data)
+
+		if len(batch) >= MAX_BATCH_SIZE {
+
+			result = result && handler(c, batch)
+			total_inputs += 1
+			batch = []BatchUnitData{}
+		}
+	}
+
+	if len(batch) > 0 {
+		result = result && handler(c, batch)
+		total_inputs += 1
+	}
+
+	return total_inputs, result
+}
+
 func (c *Client) SetupGracefulShutdown() {
 
 	sigChan := make(chan os.Signal)
@@ -66,6 +119,18 @@ func (c *Client) SetupGracefulShutdown() {
 		c.running = false
 		log.Errorf("action: receive_message | result: fail | client_id: %v ", c.config.ID)
 	}()
+}
+
+func ingestWeatherHandler(c *Client, batch []BatchUnitData) bool {
+
+	_, err := c.analyzer.IngestWeather(batch)
+	if err != nil {
+		log.Errorf("action: send_batch | result: fail | err: %s", err)
+		return false
+	}
+
+	log.Infof("action: ingest_weather | result: success | client_id: %v  | msg: Batch de %v ", c.config.ID, len(batch))
+	return true
 }
 
 // StartClientLoop Send messages to the client until some time threshold is met
@@ -105,16 +170,16 @@ func (c *Client) Start() {
 
 	c.createClientSocket()
 
-	analyzer := NewAnalyzer(&c.conn)
-	result, err := analyzer.Ping()
-	if err != nil {
-		log.Error("action: Ping | result: fail | client_id: %v | msg: %s", c.config.ID, err)
-	}
+	c.analyzer = NewAnalyzer(&c.conn)
+
+	registers, result := batchDataProcessor(c, c.config.DataPath, ingestWeatherHandler, 20, "WEATHER")
 
 	if !result {
-		log.Error("action: Ping | result: fail | client_id: %v | msg: something was wrong", c.config.ID)
-		return
+		log.Warnf("action: send_weather | result: warning | client_id: %v | msg: some weather batch could not be send", c.config.ID)
 	}
 
-	log.Infof("action: Ping | result: success | client_id: %v", c.config.ID)
+	log.Infof("action: send_weather | result: success | client_id: %v | msg: sent %v weather registers.", c.config.ID, registers)
+
+	log.Infof("action: execution | result: success | client_id: %v", c.config.ID)
+
 }

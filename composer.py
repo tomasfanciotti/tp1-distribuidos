@@ -51,7 +51,7 @@ def generate(clients):
         client_aux = deepcopy(client)
         client_aux["container_name"] = service_name
         client_aux["environment"].append(f"CLI_ID={i + 1}")
-        client_aux["environment"].append(f"CHUNK_FILE=/app/data/agency-{i + 1}.csv")
+        client_aux["environment"].append(f"CHUNK_FILE=/app/data/weather.csv")
         services[service_name] = client_aux
 
     config["services"] = services

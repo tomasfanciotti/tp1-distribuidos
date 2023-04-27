@@ -46,6 +46,9 @@ class Packet:
         encoded_data = encode(data)
         return Packet(opcode, len(encoded_data), encoded_data)
 
+    def get(self):
+        return decode(self.data)
+
 
 class ErrorPacket(Packet):
 
