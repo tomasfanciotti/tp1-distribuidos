@@ -10,6 +10,8 @@ BuildTp(){
   else
       docker build -f ./server/Dockerfile -t "server:latest" .
       docker build -f ./client/Dockerfile -t "client:latest" .
+      docker build -f ./rabbitmq/rabbitmq.dockerfile -t "rabbitmq:latest" .
+      docker build -f ./filters/Dockerfile -t "python-filter:latest" .
   fi
 }
 
@@ -25,11 +27,16 @@ StopTp(){
 
 RunTp(){
 
-    if [ "$1" == "test" ]; then
+    if [ "$1" == "test-server" ]; then
 
         # Temporary container to test the server
         docker build -f ./netcat/Dockerfile -t "netcat:latest" .
         docker run --rm --network "$(cat ./server/network)" -i -t "netcat:latest"
+
+    elif [ "$1" == "test-consumer" ]; then
+
+        # Temporary container to test some queue/exchange
+        docker run --rm --mount type=bind,src="$(PWD)/filters/test/",dst="/app/" --network "$(cat ./server/network)" -i -t "python-filter:latest"
 
     elif [ "$1" == "logs" ]; then
 
@@ -39,7 +46,7 @@ RunTp(){
     else
 
         # Docker Compose Up
-        python3 composer.py --clients "$1"
+        # python3 composer.py --clients "$1"
         docker compose -f docker-compose-gen.yaml up -d --build
 
     fi

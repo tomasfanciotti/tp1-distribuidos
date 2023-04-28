@@ -1,20 +1,34 @@
 
+from .messaging_protocol import encode
+import time
+import pika
+
+# Wait for rabbitmq to come up
+time.sleep(10)
+
+connection = pika.BlockingConnection(
+    pika.ConnectionParameters(host='rabbitmq'))
+channel = connection.channel()
+
+channel.queue_declare(queue='raw_weather_data', durable=True)
+
 WEATHER_FIELDS = 21
 STATION_FIELDS = 6
 TRIPS_FIELDS = 8
 
+
 def handle_wheather(data):
 
+    # Cantidad de weathers
     batch_size = int(data.pop(0))
 
     try:
 
-        with open("weather.csv", "a") as file:
-            for i in range(batch_size):
-                reg = ",".join(data[i*WEATHER_FIELDS+1:(i+1)*WEATHER_FIELDS])
-                file.write(reg+"\n")
+        for i in range(batch_size):
+            reg = data[i*WEATHER_FIELDS+1:(i+1)*WEATHER_FIELDS]
+            channel.basic_publish(exchange="", routing_key="raw_weather_data", body=encode(reg))
 
-    except:
+    except Exception as e:
 
         return False
 
