@@ -6,7 +6,7 @@ import os
 # Wait for rabbitmq to come up
 time.sleep(10)
 
-TESTING_EXCHANGE = "weather_topic"
+TESTING_EXCHANGE = "trip_topic"
 
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(host='rabbitmq'))

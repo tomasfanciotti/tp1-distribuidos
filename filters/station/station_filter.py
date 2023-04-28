@@ -10,7 +10,7 @@ logging.basicConfig(
 )
 
 # Wait for rabbitmq to come up
-# time.sleep(2)
+time.sleep(5)
 
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(host='rabbitmq'))

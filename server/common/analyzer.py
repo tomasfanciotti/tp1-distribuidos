@@ -11,6 +11,8 @@ connection = pika.BlockingConnection(
 channel = connection.channel()
 
 channel.queue_declare(queue='raw_weather_data', durable=True)
+channel.queue_declare(queue='raw_station_data', durable=True)
+channel.queue_declare(queue='raw_trip_data', durable=True)
 
 WEATHER_FIELDS = 21
 STATION_FIELDS = 6
@@ -58,12 +60,11 @@ def handle_trips(data):
 
     try:
 
-        with open("trips.csv", "a") as file:
-            for i in range(batch_size):
-                reg = ",".join(data[i*TRIPS_FIELDS+1:(i+1)*TRIPS_FIELDS])
-                file.write(reg+"\n")
+        for i in range(batch_size):
+            reg = data[i*TRIPS_FIELDS+1:(i+1)*TRIPS_FIELDS]
+            channel.basic_publish(exchange="", routing_key="raw_trip_data", body=encode(reg))
 
-    except:
+    except Exception as e:
 
         return False
 
