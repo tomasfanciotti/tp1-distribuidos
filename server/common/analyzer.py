@@ -41,12 +41,11 @@ def handle_stations(data):
 
     try:
 
-        with open("stations.csv", "a") as file:
-            for i in range(batch_size):
-                reg = ",".join(data[i*STATION_FIELDS+1:(i+1)*STATION_FIELDS])
-                file.write(reg+"\n")
+        for i in range(batch_size):
+            reg = data[i*STATION_FIELDS+1:(i+1)*STATION_FIELDS]
+            channel.basic_publish(exchange="", routing_key="raw_station_data", body=encode(reg))
 
-    except:
+    except Exception as e:
 
         return False
 
