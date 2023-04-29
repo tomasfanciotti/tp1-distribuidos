@@ -99,6 +99,11 @@ def generate(clients):
     services["trip_weather_joiner"]["entrypoint"] = "python3 /app/trip_weather_joiner.py"
     services["trip_weather_joiner"]["volumes"] = ["./joiners/trip_weather/:/app/"]
 
+    services["trip_station_joiner"] = deepcopy(filter)
+    services["trip_station_joiner"]["container_name"] = "trip_station_joiner"
+    services["trip_station_joiner"]["entrypoint"] = "python3 /app/trip_station_joiner.py"
+    services["trip_station_joiner"]["volumes"] = ["./joiners/trip_station/:/app/"]
+
     services["rabbitmq"] = rabbit
 
     config["services"] = services
