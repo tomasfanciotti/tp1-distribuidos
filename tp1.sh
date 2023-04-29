@@ -46,7 +46,7 @@ RunTp(){
     else
 
         # Docker Compose Up
-        # python3 composer.py --clients "$1"
+        python3 composer.py --clients "$1"
         docker compose -f docker-compose-gen.yaml up -d --build
 
     fi

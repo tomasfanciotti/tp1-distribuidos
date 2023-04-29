@@ -6,7 +6,7 @@ import os
 # Wait for rabbitmq to come up
 time.sleep(10)
 
-TESTING_EXCHANGE = "trip_topic"
+TESTING_EXCHANGE = "trip-weather-topic"
 
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(host='rabbitmq'))
@@ -18,8 +18,10 @@ result = channel.queue_declare(queue='', durable=True)
 queue_name = result.method.queue
 channel.queue_bind(exchange=TESTING_EXCHANGE, queue=queue_name)
 
+
 def callback(ch, method, properties, body):
     print("Received {}".format(body))
+
 
 channel.basic_qos(prefetch_count=1)
 channel.basic_consume(
