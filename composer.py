@@ -60,6 +60,7 @@ filter = {
     "depends_on": ["rabbitmq", "server"],
     "restart": "on-failure",
     "environment": ["PYTHONUNBUFFERED=1", "LOGGING_LEVEL=DEBUG"],
+    "volumes": ["./server/common/messaging_protocol.py:/app/messaging_protocol.py"]
 }
 
 
@@ -79,6 +80,7 @@ def generate(clients):
         client_aux["environment"].append(f"TRIPS_FILE=/app/data/trips_test.csv")
         services[service_name] = client_aux
 
+    # Raw Data Filters
     services["weather_filter"] = deepcopy(filter)
     services["weather_filter"]["container_name"] = "weather_filter"
     services["weather_filter"]["entrypoint"] = "python3 /app/weather_filter.py"
@@ -94,6 +96,7 @@ def generate(clients):
     services["trip_filter"]["entrypoint"] = "python3 /app/trip_filter.py"
     services["trip_filter"]["volumes"] = ["./filters/trip/:/app/"]
 
+    # Joiners
     services["trip_weather_joiner"] = deepcopy(filter)
     services["trip_weather_joiner"]["container_name"] = "trip_weather_joiner"
     services["trip_weather_joiner"]["entrypoint"] = "python3 /app/trip_weather_joiner.py"
@@ -103,6 +106,17 @@ def generate(clients):
     services["trip_station_joiner"]["container_name"] = "trip_station_joiner"
     services["trip_station_joiner"]["entrypoint"] = "python3 /app/trip_station_joiner.py"
     services["trip_station_joiner"]["volumes"] = ["./joiners/trip_station/:/app/"]
+
+    # Query 1
+    services["query1_filter1"] = deepcopy(filter)
+    services["query1_filter1"]["container_name"] = "query1_filter"
+    services["query1_filter1"]["entrypoint"] = "python3 /app/prectot_filter.py"
+    services["query1_filter1"]["volumes"].append("./filters/query1/prectot_filter.py:/app/prectot_filter.py")
+
+    services["query1_filter2"] = deepcopy(filter)
+    services["query1_filter2"]["container_name"] = "query1_average_calc"
+    services["query1_filter2"]["entrypoint"] = "python3 /app/average_calc.py"
+    services["query1_filter2"]["volumes"].append("./filters/query1/average_calc.py:/app/average_calc.py")
 
     services["rabbitmq"] = rabbit
 
