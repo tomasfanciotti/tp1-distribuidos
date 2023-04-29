@@ -1,5 +1,5 @@
 # noinspection PyUnresolvedReferences
-from messaging_protocol import decode, encode
+from messaging_protocol import decode, encode       # module provided on the container
 import pika
 import time
 import logging

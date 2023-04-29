@@ -3,7 +3,9 @@ import pika
 import time
 import os
 import logging
-from messaging_protocol import encode, decode
+# noinspection PyUnresolvedReferences
+from messaging_protocol import decode, encode       # module provided on the container
+
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
