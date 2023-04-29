@@ -84,28 +84,28 @@ def generate(clients):
     services["weather_filter"] = deepcopy(filter)
     services["weather_filter"]["container_name"] = "weather_filter"
     services["weather_filter"]["entrypoint"] = "python3 /app/weather_filter.py"
-    services["weather_filter"]["volumes"] = ["./filters/weather/:/app/"]
+    services["weather_filter"]["volumes"].append("./filters/weather/weather_filter.py:/app/weather_filter.py")
 
     services["station_filter"] = deepcopy(filter)
     services["station_filter"]["container_name"] = "station_filter"
     services["station_filter"]["entrypoint"] = "python3 /app/station_filter.py"
-    services["station_filter"]["volumes"] = ["./filters/station/:/app/"]
+    services["station_filter"]["volumes"].append("./filters/station/station_filter.py:/app/station_filter.py")
 
     services["trip_filter"] = deepcopy(filter)
     services["trip_filter"]["container_name"] = "trip_filter"
     services["trip_filter"]["entrypoint"] = "python3 /app/trip_filter.py"
-    services["trip_filter"]["volumes"] = ["./filters/trip/:/app/"]
+    services["trip_filter"]["volumes"].append("./filters/trip/trip_filter.py:/app/trip_filter.py")
 
     # Joiners
     services["trip_weather_joiner"] = deepcopy(filter)
     services["trip_weather_joiner"]["container_name"] = "trip_weather_joiner"
     services["trip_weather_joiner"]["entrypoint"] = "python3 /app/trip_weather_joiner.py"
-    services["trip_weather_joiner"]["volumes"] = ["./joiners/trip_weather/:/app/"]
+    services["trip_weather_joiner"]["volumes"].append("./joiners/trip_weather/trip_weather_joiner.py:/app/trip_weather_joiner.py")
 
     services["trip_station_joiner"] = deepcopy(filter)
     services["trip_station_joiner"]["container_name"] = "trip_station_joiner"
     services["trip_station_joiner"]["entrypoint"] = "python3 /app/trip_station_joiner.py"
-    services["trip_station_joiner"]["volumes"] = ["./joiners/trip_station/:/app/"]
+    services["trip_station_joiner"]["volumes"].append("./joiners/trip_station/trip_station_joiner.py:/app/trip_station_joiner.py")
 
     # Query 1
     services["query1_filter1"] = deepcopy(filter)
@@ -117,6 +117,17 @@ def generate(clients):
     services["query1_filter2"]["container_name"] = "query1_average_calc"
     services["query1_filter2"]["entrypoint"] = "python3 /app/average_calc.py"
     services["query1_filter2"]["volumes"].append("./filters/query1/average_calc.py:/app/average_calc.py")
+
+    # Query 2
+    services["query2_filter1"] = deepcopy(filter)
+    services["query2_filter1"]["container_name"] = "filter"
+    services["query2_filter1"]["entrypoint"] = "python3 /app/filter.py"
+    services["query2_filter1"]["volumes"].append("./filters/query2/filter.py:/app/filter.py")
+
+    services["query2_filter2"] = deepcopy(filter)
+    services["query2_filter2"]["container_name"] = "counter"
+    services["query2_filter2"]["entrypoint"] = "python3 /app/counter.py"
+    services["query2_filter2"]["volumes"].append("./filters/query2/counter.py:/app/counter.py")
 
     services["rabbitmq"] = rabbit
 
