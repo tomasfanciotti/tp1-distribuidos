@@ -24,20 +24,19 @@ channel.queue_declare(queue='query3-pipe2', durable=True)
 
 TARGET = "montreal"
 
-STATION_NAME_IDX = 0
-START_LATITUDE_IDX = 1
-START_LONGITUDE_IDX = 2
-END_LATITUDE_IDX = 3
-END_LONGITUDE_IDX = 4
+CITY_IDX = 0
+STATION_NAME_IDX = 1
+START_LATITUDE_IDX = 2
+START_LONGITUDE_IDX = 3
+END_LATITUDE_IDX = 4
+END_LONGITUDE_IDX = 5
 EOF = "#"
-
-status = {}
 
 
 def callback(ch, method, properties, body):
     """
-        inpiut: [END_STATION, START_LATITUDE, START_LONGITUDE, END_LATITUDE, END_LONGITUDE]
-        output: [END_STATION, DISTANCE]
+        inpiut: [ CITY, END_STATION, START_LATITUDE, START_LONGITUDE, END_LATITUDE, END_LONGITUDE]
+        output: [ CITY, END_STATION, DISTANCE]
     """
 
     trip = decode(body)
@@ -49,11 +48,16 @@ def callback(ch, method, properties, body):
         ch.basic_publish(exchange="", routing_key='query3-pipe2', body=encode(EOF))
         return
 
+    if trip[CITY_IDX] != TARGET:
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        logging.info(f"action: filter_callback | result: success | Ignored trip from other city instead {TARGET}.")
+        return
+
     start = (float(trip[START_LATITUDE_IDX]), float(trip[START_LONGITUDE_IDX]))
     end = (float(trip[END_LATITUDE_IDX]), float(trip[END_LONGITUDE_IDX]))
     distance = haversine(start, end)
 
-    filtered = [trip[STATION_NAME_IDX], str(distance)]
+    filtered = [trip[CITY_IDX], trip[STATION_NAME_IDX], str(distance)]
 
     ch.basic_publish(exchange="", routing_key='query3-pipe2', body=encode(filtered))
     ch.basic_ack(delivery_tag=method.delivery_tag)

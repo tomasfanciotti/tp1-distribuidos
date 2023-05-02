@@ -20,13 +20,14 @@ channel = connection.channel()
 channel.queue_declare(queue='raw_trip_data', durable=True)
 channel.exchange_declare(exchange='trip_topic', exchange_type='fanout')
 
-START_DATE_INDEX = 0
-START_STATION_INDEX = 1
-END_DATE_INDEX = 2
-END_STATION_INDEX = 3
-DURATION_INDEX = 4
-MEMBER_INDEX = 5
-YEAR_INDEX = 6
+CITY_INDEX = 0
+START_DATE_INDEX = 1
+START_STATION_INDEX = 2
+END_DATE_INDEX = 3
+END_STATION_INDEX = 4
+DURATION_INDEX = 5
+MEMBER_INDEX = 6
+YEAR_INDEX = 7
 
 EOF = "#"
 
@@ -51,7 +52,7 @@ def filter_trip(ch, method, properties, body):
         if float(reg[DURATION_INDEX]) < 0:
             reg[DURATION_INDEX] = "0"
 
-        filtered = [reg[START_DATE_INDEX], reg[START_STATION_INDEX], reg[END_STATION_INDEX], reg[DURATION_INDEX],
+        filtered = [reg[CITY_INDEX], reg[START_DATE_INDEX], reg[START_STATION_INDEX], reg[END_STATION_INDEX], reg[DURATION_INDEX],
                     reg[YEAR_INDEX]]
 
         channel.basic_publish(exchange="trip_topic", routing_key='', body=encode(filtered))

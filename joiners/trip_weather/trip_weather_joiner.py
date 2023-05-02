@@ -36,11 +36,13 @@ channel.exchange_declare(exchange="trip-weather-topic", exchange_type="fanout")
 weather_info = {}
 
 # Weather file
-DATE_INDEX = 0
-PRECTOT_INDEX = 1
+CITY_INDEX = 0
+DATE_INDEX = 1
+PRECTOT_INDEX = 2
 
 # Trip file
-START_DATE_INDEX = 0
+TRIP_CITY_INDEX = 0
+START_DATE_INDEX = 1
 
 EOF = "#"
 
@@ -51,7 +53,6 @@ def config_weather(ch, method, properties, body):
     output: None
     """
 
-
     weather = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | msg: {weather} ")
 
@@ -60,7 +61,8 @@ def config_weather(ch, method, properties, body):
         ch.stop_consuming()
         return
 
-    key, value = weather[DATE_INDEX].split(" ")[0], [weather[PRECTOT_INDEX]]
+    key = (weather[CITY_INDEX], weather[DATE_INDEX].split(" ")[0])
+    value = [weather[PRECTOT_INDEX]]
 
     if key in weather_info:
         logging.warning(f"action: filter_callback | result: warning | msg: key {key} already weather info. Overwriting")
@@ -83,7 +85,7 @@ def joiner(ch, method, properties, body):
         channel.basic_publish(exchange="trip-weather-topic",  routing_key='', body=encode(trip))
         return
 
-    trip_weather = trip[START_DATE_INDEX].split(" ")[0]
+    trip_weather = ( trip[TRIP_CITY_INDEX], trip[START_DATE_INDEX].split(" ")[0])
     if trip_weather not in weather_info:
         logging.warning(
             f"action: join_callback | result: warning | msg: No weather info found for trip started in {trip_weather}. Ignoring join..")

@@ -1,5 +1,5 @@
 # noinspection PyUnresolvedReferences
-from messaging_protocol import decode, encode       # module provided on the container
+from messaging_protocol import decode, encode  # module provided on the container
 import pika
 import time
 import logging
@@ -27,24 +27,28 @@ channel.queue_bind(exchange='trip-weather-topic', queue=queue_name)
 # Publish filtered
 channel.queue_declare(queue='query1-pipe1', durable=True)
 
-PRECTOT_TRESHOLD = 20
+DURATION_IDX = 4
+PRECTOT_IDX = 6
+
+PRECTOT_TRESHOLD = 1
 EOF = "#"
+
 
 def callback(ch, method, properties, body):
     """
         input:  [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR, PRECTOT ]
-        output: [ PRECTOT ]
+        output: [ DURATION ]
     """
     trip = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | body: {trip} ")
 
     if trip == EOF:
-        logging.info(f"action: filter_callback | result: success | msg: END OF FILE trips.") 
-        channel.basic_publish(exchange="",  routing_key='query1-pipe1', body=encode(trip))
+        logging.info(f"action: filter_callback | result: success | msg: END OF FILE trips.")
+        channel.basic_publish(exchange="", routing_key='query1-pipe1', body=encode(trip))
         return
-    
-    if float(trip[-1]) > PRECTOT_TRESHOLD:
-        channel.basic_publish(exchange='', routing_key='query1-pipe1', body=encode(trip))
+
+    if float(trip[PRECTOT_IDX]) > PRECTOT_TRESHOLD:
+        channel.basic_publish(exchange='', routing_key='query1-pipe1', body=encode([trip[DURATION_IDX]]))
         logging.info(f"action: filter_callback | result: success | msg: condition met. Sending to the next stage.")
     else:
         logging.info(f"action: filter_callback | result: success | msg: trip filtered.")

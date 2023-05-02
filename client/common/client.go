@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -15,6 +16,9 @@ import (
 const (
 	WAITING_PERIOD = 4
 	MAX_BATCH_SIZE = 2
+	WEATHER_TYPE   = "weather.csv"
+	STATION_TYPE   = "station.csv"
+	TRIP_TYPE      = "trip.csv"
 )
 
 // ClientConfig Configuration used by the client
@@ -67,7 +71,7 @@ type BatchUnitData struct {
 	data      []string
 }
 
-func batchDataProcessor(c *Client, fileName string, handler func(*Client, []BatchUnitData) bool, expected_fields int, batchType string) (int, bool) {
+func batchDataProcessor(c *Client, fileName string, handler func(*Client, []BatchUnitData) bool, expected_fields int, batchType string, city string) (int, bool) {
 
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -91,6 +95,7 @@ func batchDataProcessor(c *Client, fileName string, handler func(*Client, []Batc
 			continue
 		}
 
+		campos = append([]string{city}, campos...)
 		data := BatchUnitData{batchType: batchType, data: campos}
 		batch = append(batch, data)
 
@@ -198,37 +203,68 @@ func (c *Client) Start() {
 
 	c.analyzer = NewAnalyzer(&c.conn)
 
-	// Weathers
-	registers, result := batchDataProcessor(c, c.config.WetherFile, ingestWeatherHandler, 20, "WEATHER")
+	// Ruta de la carpeta principal que contiene las ciudades
+	root := "/app/data/"
 
-	if !result {
-		log.Warnf("action: send_weather | result: warning | client_id: %v | msg: some weather batch could not be send", c.config.ID)
+	// Función que se ejecutará para cada archivo encontrado
+	// Recibe la ruta del archivo y su información
+	visit := func(path string, info os.FileInfo, err error) error {
+		// Si no es un archivo CSV, se omite
+		if !strings.HasSuffix(path, ".csv") {
+			return nil
+		}
+
+		splitted := strings.Split(path, "/")
+		file_type := splitted[len(splitted)-1]
+		city := splitted[len(splitted)-2]
+
+		log.Infof("action: walk_files | result: in_progress | city: %v | file: %v", city, file_type)
+
+		if file_type == WEATHER_TYPE {
+
+			// Weathers
+			registers, result := batchDataProcessor(c, path, ingestWeatherHandler, 20, "WEATHER", city)
+
+			if !result {
+				log.Warnf("action: send_weather | result: warning | client_id: %v | msg: some weather batch could not be send", c.config.ID)
+			}
+
+			log.Infof("action: send_weather | result: success | client_id: %v | msg: sent %v weather batchs.", c.config.ID, registers)
+
+		} else if file_type == STATION_TYPE {
+
+			// Stations
+			registers, result := batchDataProcessor(c, path, ingestStationHandler, 5, "STATION", city)
+
+			if !result {
+				log.Warnf("action: send_stations | result: warning | client_id: %v | msg: some station batch could not be send", c.config.ID)
+			}
+			log.Infof("action: send_stations | result: success | client_id: %v | msg: sent %v station batchs.", c.config.ID, registers)
+
+		} else if file_type == TRIP_TYPE {
+
+			// Trips
+			registers, result := batchDataProcessor(c, path, ingestTripsHandler, 7, "TRIP", city)
+
+			if !result {
+				log.Warnf("action: send_trips | result: warning | client_id: %v | msg: some trips batch could not be send", c.config.ID)
+			}
+			log.Infof("action: send_trips | result: success | client_id: %v | msg: sent %v trips batchs.", c.config.ID, registers)
+		}
+
+		return nil
 	}
-	log.Infof("action: send_weather | result: success | client_id: %v | msg: sent %v weather batchs.", c.config.ID, registers)
 
-	c.analyzer.SendEOF("weather")
-
-	// Stations
-	registers, result = batchDataProcessor(c, c.config.StationsFile, ingestStationHandler, 5, "STATION")
-
-	if !result {
-		log.Warnf("action: send_stations | result: warning | client_id: %v | msg: some station batch could not be send", c.config.ID)
+	// Se recorre el directorio raíz y sus subdirectorios
+	err := filepath.Walk(root, visit)
+	if err != nil {
+		log.Errorf("action: load_data | result: fail | client_id: %v | msg: %v", c.config.ID, err)
+		return
 	}
-	log.Infof("action: send_stations | result: success | client_id: %v | msg: sent %v station batchs.", c.config.ID, registers)
 
-	c.analyzer.SendEOF("station")
+	c.analyzer.SendEOF("")
 
-	// Trips
-	registers, result = batchDataProcessor(c, c.config.TripsFile, ingestTripsHandler, 7, "TRIP")
-
-	if !result {
-		log.Warnf("action: send_trips | result: warning | client_id: %v | msg: some trips batch could not be send", c.config.ID)
-	}
-	log.Infof("action: send_trips | result: success | client_id: %v | msg: sent %v trips batchs.", c.config.ID, registers)
-
-	c.analyzer.SendEOF("trip")
-
-	_, err := c.analyzer.Query1()
+	_, err = c.analyzer.Query1()
 	if err != nil {
 		log.Errorf("action: query #1 | result: fail | client_id: %v | msg: %v", c.config.ID, err)
 	}

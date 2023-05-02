@@ -35,13 +35,15 @@ channel.exchange_declare(exchange="trip-start-station-topic", exchange_type="fan
 channel.exchange_declare(exchange="trip-end-station-topic", exchange_type="fanout")
 
 # station file
-STATION_ID = 0
-STATION_YEAR_ID = 4
+CITY_ID = 0
+STATION_ID = 1
+STATION_YEAR_ID = 5
 
 # Trip file
-START_STATION = 1
-END_STATION = 2
-TRIP_YEAR_ID = 4
+TRIP_CITY_ID = 0
+START_STATION = 2
+END_STATION = 3
+TRIP_YEAR_ID = 5
 
 station_info = {}
 
@@ -62,8 +64,8 @@ def config_station(ch, method, properties, body):
         ch.stop_consuming()
         return
 
-    key = (station[STATION_ID], station[STATION_YEAR_ID])
-    value = [station[i] for i in range(len(station)) if i != STATION_ID and i != STATION_YEAR_ID]
+    key = (station[CITY_ID], station[STATION_ID], station[STATION_YEAR_ID])
+    value = [station[i] for i in range(len(station)) if i != STATION_ID and i != STATION_YEAR_ID and i != CITY_ID]
 
     if key in station_info:
         logging.warning(f"action: config_callback | result: warning | msg: key {key} already station info. Overwriting")
@@ -89,8 +91,8 @@ def joiner(ch, method, properties, body):
         channel.basic_publish(exchange="trip-end-station-topic",  routing_key="", body=encode(trip))
         return
 
-    trip_start_station = (trip[START_STATION], trip[TRIP_YEAR_ID])
-    trip_end_station = (trip[END_STATION], trip[TRIP_YEAR_ID])
+    trip_start_station = (trip[CITY_ID], trip[START_STATION], trip[TRIP_YEAR_ID])
+    trip_end_station = (trip[CITY_ID], trip[END_STATION], trip[TRIP_YEAR_ID])
 
     if trip_start_station not in station_info:
         logging.warning(

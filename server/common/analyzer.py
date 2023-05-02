@@ -34,9 +34,9 @@ def init():
 time.sleep(10)
 init()
 
-WEATHER_FIELDS = 21
-STATION_FIELDS = 6
-TRIPS_FIELDS = 8
+WEATHER_FIELDS = 22
+STATION_FIELDS = 7
+TRIPS_FIELDS = 9
 
 EOF = "#"
 
@@ -45,8 +45,9 @@ def sendEOF(archivo):
     conn = connectRabbit()
     channel = conn.channel()
 
-    queue = f"raw_{archivo.lower()}_data"
-    channel.basic_publish(exchange="", routing_key=queue, body=encode(EOF))
+    channel.basic_publish(exchange="", routing_key="raw_weather_data", body=encode(EOF))
+    channel.basic_publish(exchange="", routing_key="raw_station_data", body=encode(EOF))
+    channel.basic_publish(exchange="", routing_key="raw_trip_data", body=encode(EOF))
 
     conn.close()
 

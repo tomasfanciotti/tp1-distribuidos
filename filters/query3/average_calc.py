@@ -21,9 +21,9 @@ channel = connection.channel()
 channel.queue_declare(queue='query3-pipe2', durable=True)
 channel.queue_declare(queue='query3-pipe3', durable=True)
 
-
-STATION_IDX = 0
-DISTANCE_IDX = 1
+CITY_IDX = 0
+STATION_IDX = 1
+DISTANCE_IDX = 2
 
 EOF = "#"
 
@@ -32,7 +32,7 @@ status = {}
 
 def callback(ch, method, properties, body):
     """
-        input:  [END_STATION, DISTANCE]
+        input:  [CITY, END_STATION, DISTANCE]
         output: []
     """
     
@@ -46,17 +46,17 @@ def callback(ch, method, properties, body):
         ch.stop_consuming()
         return
 
-    if trip[STATION_IDX] not in status:
+    key = (trip[CITY_IDX], trip[STATION_IDX])
+    if key not in status:
         logging.info(f"action: callback | result: in_progress | msg: new station.")
-        status[trip[STATION_IDX]] = { "trips": 0,
-                                      "distance_sum": 0}
+        status[key] = {"trips": 0, "distance_sum": 0}
 
-    status[trip[STATION_IDX]]["trips"] += 1
-    status[trip[STATION_IDX]]["distance_sum"] += float(trip[DISTANCE_IDX])
+    status[key]["trips"] += 1
+    status[key]["distance_sum"] += float(trip[DISTANCE_IDX])
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
     logging.info(
-        f"action: callback | result: success | trips: {status[trip[STATION_IDX]]['trips']} | distance_sum : { status[trip[STATION_IDX]]['distance_sum']}.")
+        f"action: callback | result: success | trips: {status[key]['trips']} | distance_sum : { status[key]['distance_sum']}.")
 
 
 channel.basic_qos(prefetch_count=1)
@@ -68,19 +68,18 @@ logging.info(
 
 channel.start_consuming()
 
-logging.info(
-    f"action: average_calc | result: in_progress | msg: calculating averages")
+logging.info(f"action: average_calc | result: in_progress | msg: calculating averages")
 
 for station in status:
 
     result = str(round(status[station]["distance_sum"] / status[station]["trips"], 4))
-    response = [station, result]
+    response = [station[0], station[1], result]
 
     channel.basic_publish(exchange="",
                           routing_key="query3-pipe3",
                           body=encode(response))
     logging.info(
-        f"action: average_calc | result: in_progress | station: {station} | average: {result}")
+        f"action: average_calc | result: in_progress | city: {station[0]} | station: {station[1]} | average: {result}")
 
 
 logging.info(

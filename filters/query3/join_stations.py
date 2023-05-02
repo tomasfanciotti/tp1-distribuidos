@@ -31,13 +31,13 @@ channel.queue_declare(queue='query3-pipe1', durable=True)
 
 SOURCES = ['trip-start-station-topic', 'trip-end-station-topic']
 
-TARGET = "Montreal"
+TARGET = "montreal"
 
 ID_TRIP_IDX = 0
 CITY_IDX = 0
-STATION_IDX = 5
-LATITUDE_IDX = 6
-LONGITUDE_IDX = 7
+STATION_IDX = 6
+LATITUDE_IDX = 7
+LONGITUDE_IDX = 8
 
 EOF = "#"
 
@@ -49,7 +49,7 @@ def callback(ch, method, properties, body):
     """
         input:  [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR, START_NAME, START_LATITUDE, START_LONGITUDE]
         input2: [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR, END_NAME, END_LATITUDE, END_LONGITUDE]
-        output: [ END_NAME, START_LATITUDE, START_LONGITUDE, END_LATITUDE, END_LONGITUDE]
+        output: [ CITY, END_NAME, START_LATITUDE, START_LONGITUDE, END_LATITUDE, END_LONGITUDE]
     """
 
     trip = decode(body)
@@ -62,11 +62,11 @@ def callback(ch, method, properties, body):
             ch.basic_publish(exchange="", routing_key='query3-pipe1', body=encode(trip))
         return
 
-    if trip[CITY_IDX] != TARGET and False:
+    if trip[CITY_IDX] != TARGET:
         logging.info(f"action: callback | result: done | msg: trip from other city instead of {TARGET}")
         return
 
-    trip_id = tuple(trip[:5])
+    trip_id = tuple(trip[:6])
     source = method.exchange
     if trip_id not in status:
         status[trip_id] = {}
@@ -80,7 +80,8 @@ def callback(ch, method, properties, body):
 
         start_data = status[trip_id]["trip-start-station-topic"]
         end_data = status[trip_id]["trip-end-station-topic"]
-        output = [end_data[STATION_IDX], start_data[LATITUDE_IDX], start_data[LONGITUDE_IDX],
+        output = [ end_data[CITY_IDX], end_data[STATION_IDX],
+                  start_data[LATITUDE_IDX], start_data[LONGITUDE_IDX],
                   end_data[LATITUDE_IDX], end_data[LONGITUDE_IDX]]
 
         ch.basic_publish(exchange="", routing_key='query3-pipe1', body=encode(output))

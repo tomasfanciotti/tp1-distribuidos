@@ -21,7 +21,7 @@ channel = connection.channel()
 channel.queue_declare(queue='query1-pipe1', durable=True)
 channel.queue_declare(queue='query1-pipe2', durable=True)
 
-DURATION_INDEX = 3
+DURATION_INDEX = 0
 EOF = "#"
 
 status = {"trips": 0,
@@ -30,7 +30,7 @@ status = {"trips": 0,
 
 def callback(ch, method, properties, body):
     """
-        input:  [ PRECTOT ]
+        input:  [ DURATION ]
         output: [ AVERAGE ]
     """
     trip = decode(body)

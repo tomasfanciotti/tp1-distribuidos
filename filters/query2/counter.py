@@ -21,8 +21,9 @@ channel = connection.channel()
 channel.queue_declare(queue='query2-pipe1', durable=True)
 channel.queue_declare(queue='query2-pipe2', durable=True)
 
-STATION_NAME_IDX = 0
-YEAR_IDX = 1
+CITY_IDX = 0
+STATION_NAME_IDX = 1
+YEAR_IDX = 2
 
 EOF = "#"
 
@@ -30,6 +31,11 @@ status = {}
 
 
 def callback(ch, method, properties, body):
+    """
+        input: [CITY, START_STATION, YEAR]
+        output: [CITY, STATION]
+    """
+
     trip = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | body: {trip} ")
 
@@ -38,7 +44,7 @@ def callback(ch, method, properties, body):
         ch.stop_consuming()
         return
 
-    station = trip[STATION_NAME_IDX]
+    station = (trip[CITY_IDX], trip[STATION_NAME_IDX])
     year = trip[YEAR_IDX]
 
     if station not in status:
@@ -63,16 +69,17 @@ def filter_results(final_status):
         trips_2017 = final_status[station]['2017']
 
         if 2 * trips_2016 < trips_2017:
+            result = [station[0], station[1], str(trips_2016), str(trips_2017)]
             channel.basic_publish(exchange="",
                                   routing_key="query2-pipe2",
-                                  body=encode(station))
+                                  body=encode(result))
             logging.info(
-                f"action: response_enqueue | result: success | selected: {station} "
+                f"action: response_enqueue | result: success | city SELECETED: {station[0]} | station: {station[1]} "
                 f"| 2016: {trips_2016} | 2017: {trips_2017} ")
 
         else:
             logging.info(
-                f"action: response_enqueue | result: success | discarded: {station} "
+                f"action: response_enqueue | result: success | city DISCARDED: {station[0]} | station: {station[1]} "
                 f"| 2016: {trips_2016} | 2017: {trips_2017} ")
 
 

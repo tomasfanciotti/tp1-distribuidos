@@ -29,13 +29,18 @@ channel.queue_declare(queue='query2-pipe1', durable=True)
 
 YEARS = [2016, 2017]
 
-STATION_IDX = 1
-YEAR_IDX = 4
-STATION_NAME_IDX = 5
+CITY_IDX = 0
+STATION_IDX = 2
+YEAR_IDX = 5
+STATION_NAME_IDX = 6
 
 EOF="#"
 
 def callback(ch, method, properties, body):
+    """
+        input: [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR, START_NAME, START_LATITUDE, START_LONGITUDE ]
+        output: [CITY, START_STATION, YEAR]
+    """
 
     trip = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | body: {trip} ")
@@ -49,7 +54,7 @@ def callback(ch, method, properties, body):
         logging.info(f"action: filter_callback | result: success | msg: filtered trip by YEAR")
         return
 
-    filtered = [trip[STATION_NAME_IDX], trip[YEAR_IDX]]
+    filtered = [trip[CITY_IDX], trip[STATION_NAME_IDX], trip[YEAR_IDX]]
     channel.basic_publish(exchange="", routing_key="query2-pipe1", body=encode(filtered))
     logging.info(f"action: filter_callback | result: success | msg: published trip filtered {filtered}")
 

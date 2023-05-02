@@ -20,8 +20,9 @@ channel = connection.channel()
 channel.queue_declare(queue='raw_weather_data', durable=True)
 channel.exchange_declare(exchange='weather_topic', exchange_type='fanout')
 
-DATE_INDEX = 0
-PRECTOT_INDEX = 1
+CITY_INDEX = 0
+DATE_INDEX = 1
+PRECTOT_INDEX = 3
 
 EOF = "#"
 
@@ -41,7 +42,7 @@ def filter_weather(ch, method, properties, body):
         channel.basic_ack(delivery_tag=method.delivery_tag)
         return
 
-    filtered = [reg[DATE_INDEX], reg[PRECTOT_INDEX]]
+    filtered = [reg[CITY_INDEX], reg[DATE_INDEX], reg[PRECTOT_INDEX]]
 
     channel.basic_publish(exchange="weather_topic", routing_key='', body=encode(filtered))
     logging.info(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
