@@ -18,7 +18,8 @@ server = {
     "entrypoint": "python3 /app/main.py",
     "environment": ["PYTHONUNBUFFERED=1", "LOGGING_LEVEL=DEBUG"],
     "networks": [NETWORK_NAME],
-    "volumes": ["./server/:/app/"]
+    "volumes": ["./server/:/app/"],
+    "restart": "on-failure"
 }
 
 network = {
@@ -120,7 +121,7 @@ def generate(clients):
 
     # Query 2
     services["query2_filter1"] = deepcopy(filter)
-    services["query2_filter1"]["container_name"] = "filter"
+    services["query2_filter1"]["container_name"] = "filter_by_trips"
     services["query2_filter1"]["entrypoint"] = "python3 /app/filter.py"
     services["query2_filter1"]["volumes"].append("./filters/query2/filter.py:/app/filter.py")
 
@@ -128,6 +129,28 @@ def generate(clients):
     services["query2_filter2"]["container_name"] = "counter"
     services["query2_filter2"]["entrypoint"] = "python3 /app/counter.py"
     services["query2_filter2"]["volumes"].append("./filters/query2/counter.py:/app/counter.py")
+
+    # Query 3
+    services["query3_filter1"] = deepcopy(filter)
+    services["query3_filter1"]["container_name"] = "join_stations"
+    services["query3_filter1"]["entrypoint"] = "python3 /app/join_stations.py"
+    services["query3_filter1"]["volumes"].append("./filters/query3/join_stations.py:/app/join_stations.py")
+
+    services["query3_filter2"] = deepcopy(filter)
+    services["query3_filter2"]["container_name"] = "distance_calc"
+    services["query3_filter2"]["entrypoint"] = "python3 /app/distance_calc.py"
+    services["query3_filter2"]["volumes"].append("./filters/query3/distance_calc.py:/app/distance_calc.py")
+
+    services["query3_filter3"] = deepcopy(filter)
+    services["query3_filter3"]["container_name"] = "average_calc"
+    services["query3_filter3"]["entrypoint"] = "python3 /app/average_calc.py"
+    services["query3_filter3"]["volumes"].append("./filters/query3/average_calc.py:/app/average_calc.py")
+
+    services["query3_filter4"] = deepcopy(filter)
+    services["query3_filter4"]["container_name"] = "filter_by_avg"
+    services["query3_filter4"]["entrypoint"] = "python3 /app/filter.py"
+    services["query3_filter4"]["volumes"].append("./filters/query3/filter.py:/app/filter.py")
+
 
     services["rabbitmq"] = rabbit
 
