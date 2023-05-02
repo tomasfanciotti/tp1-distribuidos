@@ -2,6 +2,7 @@
 
 from configparser import ConfigParser
 from common.server import Server
+from common.analyzer import handler
 import logging
 import os
 
@@ -48,7 +49,7 @@ def main():
                   f"listen_backlog: {listen_backlog} | logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    server = Server(port, listen_backlog)
+    server = Server(port, listen_backlog, handler)
     server.run()
 
 def initialize_log(logging_level):
