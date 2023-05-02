@@ -33,11 +33,17 @@ STATION_IDX = 1
 YEAR_IDX = 4
 STATION_NAME_IDX = 5
 
+EOF="#"
 
 def callback(ch, method, properties, body):
 
     trip = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | body: {trip} ")
+
+    if trip == EOF:
+        logging.info(f"action: filter_callback | result: done | msg: END OF FILE trips.") 
+        channel.basic_publish(exchange="",  routing_key='query2-pipe1', body=encode(trip))
+        return
 
     if int(trip[YEAR_IDX]) not in YEARS:
         logging.info(f"action: filter_callback | result: success | msg: filtered trip by YEAR")
@@ -49,8 +55,7 @@ def callback(ch, method, properties, body):
 
 
 channel.basic_qos(prefetch_count=1)
-channel.basic_consume(
-    queue=queue_name, on_message_callback=callback, auto_ack=True)
+channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
 
 logging.info(
     f"action: counter | result: in_progress | msg: start consuming from trip-start-station-topic ")

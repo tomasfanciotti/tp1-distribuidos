@@ -29,10 +29,16 @@ status = {"trips": 0,
 
 
 def callback(ch, method, properties, body):
+    """
+        input:  [ PRECTOT ]
+        output: [ AVERAGE ]
+    """
     trip = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | body: {trip} ")
 
     if trip == EOF:
+        logging.info(f"action: filter_callback | result: success | msg: END OF FILE trips.")
+        ch.basic_ack(delivery_tag=method.delivery_tag)
         ch.stop_consuming()
         return
 
@@ -50,10 +56,16 @@ channel.basic_consume(
 
 channel.start_consuming()
 
-result = str(round(status["duration_sum"] / status["trips"], 4))
+if status["trips"] == 0:
+    logging.info(
+        f"action: response | result: fail | trips: {status['trips']} | duration_sum : {status['duration_sum']} | msg: no trips loaded")
 
-channel.basic_publish(exchange="",
-                      routing_key="query1-pipe2",
-                      body=encode(result))
-logging.info(
-    f"action: response_enqueue | result: success | result: {result} | trips: {status['trips']} ")
+else:
+
+    result = str(round(status["duration_sum"] / status["trips"], 4))
+
+    channel.basic_publish(exchange="",
+                          routing_key="query1-pipe2",
+                          body=encode(result))
+    logging.info(
+        f"action: response_enqueue | result: success | result: {result} | trips: {status['trips']} ")

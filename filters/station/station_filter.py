@@ -1,5 +1,5 @@
 # noinspection PyUnresolvedReferences
-from messaging_protocol import decode, encode       # module provided on the container
+from messaging_protocol import decode, encode  # module provided on the container
 import pika
 import time
 import logging
@@ -20,15 +20,27 @@ channel = connection.channel()
 channel.queue_declare(queue='raw_station_data', durable=True)
 channel.exchange_declare(exchange='station_topic', exchange_type='fanout')
 
+EOF = "#"
+
 
 def filter_station(ch, method, properties, body):
+    """
+        input:  [ CITY, CODE, NAME, LATITUDE, LONGITUDE, YEARID ]
+        output: [ CITY, CODE, NAME, LATITUDE, LONGITUDE, YEARID ]
+    """
 
     reg = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | body: {reg} ")
 
-    filtered = reg # No filter applyed
+    if reg == EOF:
+        logging.info(f"action: filter_callback | result: done | msg: END OF FILE trips.")
+        channel.basic_publish(exchange="station_topic", routing_key='', body=reg)
+        channel.basic_ack(delivery_tag=method.delivery_tag)
+        return
 
-    channel.basic_publish(exchange="station_topic",  routing_key='', body=encode(filtered))
+    filtered = reg  # No filter applyed
+
+    channel.basic_publish(exchange="station_topic", routing_key='', body=encode(filtered))
     logging.info(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
 
     channel.basic_ack(delivery_tag=method.delivery_tag)

@@ -46,10 +46,17 @@ EOF = "#"
 
 
 def config_weather(ch, method, properties, body):
+    """
+    input:  [ CITY, DATE, PRECTOT ]
+    output: None
+    """
+
+
     weather = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | msg: {weather} ")
 
     if weather == EOF:
+        logging.info(f"action: filter_callback | result: success | msg: END OF FILE weather.")
         ch.stop_consuming()
         return
 
@@ -63,8 +70,18 @@ def config_weather(ch, method, properties, body):
 
 
 def joiner(ch, method, properties, body):
+    """
+    input:  [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR]
+    output: [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR, PRECTOT]
+    """
+
     trip = decode(body)
     logging.info(f"action: join_callback | result: in_progress | msg: {trip} ")
+    
+    if trip == EOF:
+        logging.info(f"action: filter_callback | result: done | msg: END OF FILE trips.") 
+        channel.basic_publish(exchange="trip-weather-topic",  routing_key='', body=encode(trip))
+        return
 
     trip_weather = trip[START_DATE_INDEX].split(" ")[0]
     if trip_weather not in weather_info:

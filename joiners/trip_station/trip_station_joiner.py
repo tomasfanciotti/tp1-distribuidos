@@ -49,10 +49,16 @@ EOF = "#"
 
 
 def config_station(ch, method, properties, body):
+    """
+        input:  [ CITY, CODE, NAME, LATITUDE, LONGITUDE, YEARID ]
+        output: None
+    """
+
     station = decode(body)
-    logging.info(f"action: config_callback | result: in_progress | msg: {station} ")
+    logging.info(f"action: config_callback | result: in_progress | body: {station} ")
 
     if station == EOF:
+        logging.info(f"action: config_callback | result: success | msg: END OF FILE station.")
         ch.stop_consuming()
         return
 
@@ -60,16 +66,28 @@ def config_station(ch, method, properties, body):
     value = [station[i] for i in range(len(station)) if i != STATION_ID and i != STATION_YEAR_ID]
 
     if key in station_info:
-        logging.warning(f"action: filter_callback | result: warning | msg: key {key} already station info. Overwriting")
+        logging.warning(f"action: config_callback | result: warning | msg: key {key} already station info. Overwriting")
 
     station_info[key] = value
-    logging.info(f"action: filter_callback | result: success | msg: sored '{value}' value in '{key}' key")
+    logging.info(f"action: config_callback | result: success | msg: sored '{value}' value in '{key}' key")
 
 
 def joiner(ch, method, properties, body):
 
+    """
+        input:  [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR]
+        output1: [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR, START_NAME, START_LATITUDE, START_LONGITUDE ]
+        output2: [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR, END_DATENAME, END_LATITUDE, END_LONGITUDE ]
+    """
+
     trip = decode(body)
     logging.info(f"action: join_callback | result: in_progress | msg: {trip} ")
+
+    if trip == EOF:
+        logging.info(f"action: filter_callback | result: success | msg: END OF FILE trips.") 
+        channel.basic_publish(exchange="trip-start-station-topic",  routing_key='', body=encode(trip))
+        channel.basic_publish(exchange="trip-end-station-topic",  routing_key="", body=encode(trip))
+        return
 
     trip_start_station = (trip[START_STATION], trip[TRIP_YEAR_ID])
     trip_end_station = (trip[END_STATION], trip[TRIP_YEAR_ID])

@@ -2,7 +2,7 @@ import socket
 import logging
 import signal
 from .messaging_protocol import Packet, receive, send
-from .analyzer import handle_wheather, handle_stations, handle_trips, handle_query_1
+from .analyzer import handle_wheather, handle_stations, handle_trips, handle_query_1, sendEOF
 import concurrent
 from concurrent.futures import ThreadPoolExecutor
 
@@ -21,7 +21,7 @@ OP_CODE_ACK = 6
 OP_CODE_QUERY1 = 7
 OP_CODE_RESPONSE_QUERY1 = 8
 OP_CODE_ERROR = 9
-
+OP_CODE_EOF = 10
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -107,6 +107,10 @@ class Server:
                     else:
                         send(client_sock, Packet.new(OP_CODE_RESPONSE_QUERY1, result))
                         logging.info(f'action: query #1 | result: success | client: {addr[0]} | msg: query #1 retreived correctly.')
+                elif packet.opcode == OP_CODE_EOF:
+                    data = packet.get()
+                    sendEOF(data)
+                    send(client_sock, Packet.new(OP_CODE_ACK, "joya"))
 
                 elif packet.opcode == OP_CODE_ZERO:
                     logging.info(f'action: disconnected | result: success | ip: {addr[0]}')

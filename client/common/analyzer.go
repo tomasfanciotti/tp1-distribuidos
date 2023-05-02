@@ -18,6 +18,7 @@ const (
 	OP_CODE_QUERY1          = 7
 	OP_CODE_RESPONSE_QUERY1 = 8
 	OP_CODE_ERROR           = 9
+	OP_CODE_EOF             = 10
 )
 
 // Bike Rides Analyzer Interface
@@ -158,6 +159,23 @@ func (bra *BikeRidesAnalyzer) Query1() (string, error) {
 
 	return string(packet_response.data), nil
 
+}
+
+func (bra *BikeRidesAnalyzer) SendEOF(file string) (string, error) {
+
+	new_packet := NewPacket(OP_CODE_EOF, file)
+	Send(*bra.conn, new_packet)
+
+	packet_response, err := Receive(*bra.conn)
+	if err != nil {
+		return "", err
+	}
+
+	if packet_response.opcode != OP_CODE_ACK {
+		return "", errors.New("servidor NO devolvió OPCODE esperado. Obtenido: " + string(rune(packet_response.opcode)) + " - " + string(packet_response.data))
+	}
+
+	return string(packet_response.data), nil
 }
 
 /*

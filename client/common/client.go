@@ -206,6 +206,8 @@ func (c *Client) Start() {
 	}
 	log.Infof("action: send_weather | result: success | client_id: %v | msg: sent %v weather batchs.", c.config.ID, registers)
 
+	c.analyzer.SendEOF("weather")
+
 	// Stations
 	registers, result = batchDataProcessor(c, c.config.StationsFile, ingestStationHandler, 5, "STATION")
 
@@ -214,6 +216,8 @@ func (c *Client) Start() {
 	}
 	log.Infof("action: send_stations | result: success | client_id: %v | msg: sent %v station batchs.", c.config.ID, registers)
 
+	c.analyzer.SendEOF("station")
+
 	// Trips
 	registers, result = batchDataProcessor(c, c.config.TripsFile, ingestTripsHandler, 7, "TRIP")
 
@@ -221,6 +225,8 @@ func (c *Client) Start() {
 		log.Warnf("action: send_trips | result: warning | client_id: %v | msg: some trips batch could not be send", c.config.ID)
 	}
 	log.Infof("action: send_trips | result: success | client_id: %v | msg: sent %v trips batchs.", c.config.ID, registers)
+
+	c.analyzer.SendEOF("trip")
 
 	_, err := c.analyzer.Query1()
 	if err != nil {

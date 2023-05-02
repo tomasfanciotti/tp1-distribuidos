@@ -1,5 +1,5 @@
 # noinspection PyUnresolvedReferences
-from messaging_protocol import decode, encode       # module provided on the container
+from messaging_protocol import decode, encode  # module provided on the container
 import pika
 import time
 import logging
@@ -28,20 +28,33 @@ DURATION_INDEX = 4
 MEMBER_INDEX = 5
 YEAR_INDEX = 6
 
+EOF = "#"
+
 
 def filter_trip(ch, method, properties, body):
+    """
+        input:  [ CITY, START_DATE, START_STATION, END_DATE, END_STATION, DURATION, MEMBER, YEAR]
+        output: [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR]
+    """
 
     reg = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | body: {reg} ")
+
+    if reg == EOF:
+        logging.info(f"action: filter_callback | result: done | msg: END OF FILE trips.")
+        ch.basic_publish(exchange="trip_topic", routing_key='', body=encode(reg))
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        return
 
     if reg[DURATION_INDEX][1:].replace(".", "").isdigit():
 
         if float(reg[DURATION_INDEX]) < 0:
             reg[DURATION_INDEX] = "0"
 
-        filtered = [reg[START_DATE_INDEX], reg[START_STATION_INDEX], reg[END_STATION_INDEX], reg[DURATION_INDEX], reg[YEAR_INDEX]]
+        filtered = [reg[START_DATE_INDEX], reg[START_STATION_INDEX], reg[END_STATION_INDEX], reg[DURATION_INDEX],
+                    reg[YEAR_INDEX]]
 
-        channel.basic_publish(exchange="trip_topic",  routing_key='', body=encode(filtered))
+        channel.basic_publish(exchange="trip_topic", routing_key='', body=encode(filtered))
 
         logging.info(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
     else:
