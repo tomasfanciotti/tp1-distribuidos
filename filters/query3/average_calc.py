@@ -1,7 +1,7 @@
 # noinspection PyUnresolvedReferences
 from messaging_protocol import decode, encode       # module provided on the container
-import pika
-import time
+# noinspection PyUnresolvedReferences
+from rabbit_interface import RabbitInterface    # module provided on the container
 import logging
 
 logging.basicConfig(
@@ -9,17 +9,6 @@ logging.basicConfig(
     level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
-
-# Wait for rabbitmq to come up
-time.sleep(10)
-
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='rabbitmq'))
-channel = connection.channel()
-
-# Publish filtered
-channel.queue_declare(queue='query3-pipe2', durable=True)
-channel.queue_declare(queue='query3-pipe3', durable=True)
 
 CITY_IDX = 0
 STATION_IDX = 1
@@ -37,12 +26,12 @@ def callback(ch, method, properties, body):
     """
     
     trip = decode(body)
-    logging.info(f"action: callback | result: in_progress | body: {trip} ")
+    logging.debug(f"action: callback | result: in_progress | body: {trip} ")
 
     if trip == EOF:
         ch.basic_ack(delivery_tag=method.delivery_tag)
         logging.info(f"action: callback | result: done | Received EOF ")
-        ch.basic_publish(exchange="", routing_key='query3-pipe3', body=encode(EOF))
+        rabbit.publish_queue('query3-pipe3', encode(EOF))
         ch.stop_consuming()
         return
 
@@ -55,18 +44,15 @@ def callback(ch, method, properties, body):
     status[key]["distance_sum"] += float(trip[DISTANCE_IDX])
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
-    logging.info(
+    logging.debug(
         f"action: callback | result: success | trips: {status[key]['trips']} | distance_sum : { status[key]['distance_sum']}.")
 
 
-channel.basic_qos(prefetch_count=1)
-channel.basic_consume(
-    queue='query3-pipe2', on_message_callback=callback, auto_ack=False)
+rabbit = RabbitInterface()
 
-logging.info(
-    f"action: average_calc | result: in_progress | msg: start consuming from queue: query3-pipe2")
+logging.info(f"action: average_calc | result: in_progress | msg: start consuming from queue: query3-pipe2")
 
-channel.start_consuming()
+rabbit.consume_queue("query3-pipe2", callback)
 
 logging.info(f"action: average_calc | result: in_progress | msg: calculating averages")
 
@@ -75,12 +61,9 @@ for station in status:
     result = str(round(status[station]["distance_sum"] / status[station]["trips"], 4))
     response = [station[0], station[1], result]
 
-    channel.basic_publish(exchange="",
-                          routing_key="query3-pipe3",
-                          body=encode(response))
+    rabbit.publish_queue("query3-pipe3", encode(response))
     logging.info(
         f"action: average_calc | result: in_progress | city: {station[0]} | station: {station[1]} | average: {result}")
-
 
 logging.info(
     f"action: average_calc | result: done ")

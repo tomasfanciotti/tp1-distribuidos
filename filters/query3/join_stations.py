@@ -1,7 +1,7 @@
 # noinspection PyUnresolvedReferences
 from messaging_protocol import decode, encode  # module provided on the container
-import pika
-import time
+# noinspection PyUnresolvedReferences
+from rabbit_interface import RabbitInterface    # module provided on the container
 import logging
 
 logging.basicConfig(
@@ -9,25 +9,6 @@ logging.basicConfig(
     level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
-
-# Wait for rabbitmq to come up
-time.sleep(10)
-
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='rabbitmq'))
-channel = connection.channel()
-
-channel.exchange_declare(exchange='trip-start-station-topic', exchange_type='fanout')
-channel.exchange_declare(exchange='trip-end-station-topic', exchange_type='fanout')
-
-# Collect joined trips
-result = channel.queue_declare(queue='', durable=True)
-queue_name = result.method.queue
-channel.queue_bind(exchange='trip-start-station-topic', queue=queue_name)
-channel.queue_bind(exchange='trip-end-station-topic', queue=queue_name)
-
-# Publish filtered
-channel.queue_declare(queue='query3-pipe1', durable=True)
 
 SOURCES = ['trip-start-station-topic', 'trip-end-station-topic']
 
@@ -53,17 +34,17 @@ def callback(ch, method, properties, body):
     """
 
     trip = decode(body)
-    logging.info(f"action: callback | result: in_progress | from: {method.exchange} | body: {trip} ")
+    logging.debug(f"action: callback | result: in_progress | from: {method.exchange} | body: {trip} ")
 
     if trip == EOF:
         topic_EOF.add(method.exchange)
         if len(topic_EOF) >= len(SOURCES):
             logging.info(f"action: callback | result: done | msg: END OF FILE trips.")
-            ch.basic_publish(exchange="", routing_key='query3-pipe1', body=encode(trip))
+            rabbit.publish_queue('query3-pipe1', encode(trip))
         return
 
     if trip[CITY_IDX] != TARGET:
-        logging.info(f"action: callback | result: done | msg: trip from other city instead of {TARGET}")
+        logging.warning(f"action: callback | result: done | msg: trip from other city instead of {TARGET}")
         return
 
     trip_id = tuple(trip[:6])
@@ -76,7 +57,7 @@ def callback(ch, method, properties, body):
         status[trip_id][source] = trip
 
     if len(status[trip_id].keys()) == 2:
-        logging.info(f"action: callback | result: in_progress | msg: ready to join")
+        logging.debug(f"action: callback | result: in_progress | msg: ready to join")
 
         start_data = status[trip_id]["trip-start-station-topic"]
         end_data = status[trip_id]["trip-end-station-topic"]
@@ -84,22 +65,20 @@ def callback(ch, method, properties, body):
                   start_data[LATITUDE_IDX], start_data[LONGITUDE_IDX],
                   end_data[LATITUDE_IDX], end_data[LONGITUDE_IDX]]
 
-        ch.basic_publish(exchange="", routing_key='query3-pipe1', body=encode(output))
+        rabbit.publish_queue('query3-pipe1', encode(output))
         del status[trip_id]
-        logging.info(f"action: callback | result: success | msg: joined and published => {output}")
+        logging.debug(f"action: callback | result: success | msg: joined and published => {output}")
 
     else:
-        logging.info(f"action: callback | result: success | msg: sotored en status and waiting for next station")
+        logging.debug(f"action: callback | result: success | msg: sotored en status and waiting for next station")
 
 
-channel.basic_qos(prefetch_count=1)
-channel.basic_consume(
-    queue=queue_name, on_message_callback=callback, auto_ack=True)
+rabbit = RabbitInterface()
+rabbit.bind_topic("trip-start-station-topic", "")
+rabbit.bind_topic("trip-end-station-topic", "")
 
-logging.info(
-    f"action: join_station | result: in_progress | msg: start consuming from trip-start-station-topic and trip-start-station-topic ")
-
-channel.start_consuming()
+logging.info(f"action: consuming trips | result: in_progress ")
+rabbit.consume_topic(callback)
 
 logging.info(
     f"action: join_station | result: success ")

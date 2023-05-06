@@ -1,7 +1,7 @@
 # noinspection PyUnresolvedReferences
 from messaging_protocol import decode, encode
-import pika
-import time
+# noinspection PyUnresolvedReferences
+from rabbit_interface import RabbitInterface    # module provided on the container
 import logging
 
 logging.basicConfig(
@@ -9,17 +9,6 @@ logging.basicConfig(
     level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
-
-# Wait for rabbitmq to come up
-time.sleep(10)
-
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='rabbitmq'))
-channel = connection.channel()
-
-# Publish filtered
-channel.queue_declare(queue='query2-pipe1', durable=True)
-channel.queue_declare(queue='query2-pipe2', durable=True)
 
 CITY_IDX = 0
 STATION_NAME_IDX = 1
@@ -37,7 +26,7 @@ def callback(ch, method, properties, body):
     """
 
     trip = decode(body)
-    logging.info(f"action: filter_callback | result: in_progress | body: {trip} ")
+    logging.debug(f"action: filter_callback | result: in_progress | body: {trip} ")
 
     if trip == EOF:
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -59,7 +48,7 @@ def callback(ch, method, properties, body):
     status[station][year] += 1
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
-    logging.info(
+    logging.debug(
         f"action: filter_callback | result: success | key: {station}, {year} | counter : {status[station][year]} ")
 
 
@@ -70,9 +59,7 @@ def filter_results(final_status):
 
         if 2 * trips_2016 < trips_2017:
             result = [station[0], station[1], str(trips_2016), str(trips_2017)]
-            channel.basic_publish(exchange="",
-                                  routing_key="query2-pipe2",
-                                  body=encode(result))
+            rabbit.publish_queue("query2-pipe2", encode(result))
             logging.info(
                 f"action: response_enqueue | result: success | city SELECETED: {station[0]} | station: {station[1]} "
                 f"| 2016: {trips_2016} | 2017: {trips_2017} ")
@@ -83,16 +70,13 @@ def filter_results(final_status):
                 f"| 2016: {trips_2016} | 2017: {trips_2017} ")
 
 
-channel.basic_qos(prefetch_count=1)
-channel.basic_consume(
-    queue='query2-pipe1', on_message_callback=callback, auto_ack=False)
+rabbit = RabbitInterface()
 
-logging.info(
-    f"action: counter | result: in_progress | msg: start consuming from query2-pipe1 ")
+logging.info(f"action: consuming | result: in_progress ")
+rabbit.consume_queue("query2-pipe1", callback)
 
-channel.start_consuming()
+logging.info(f"action: consuming | result: done")
 
 filter_results(status)
 
-logging.info(
-    f"action: counter | result: success ")
+logging.info(f"action: counter | result: success ")
