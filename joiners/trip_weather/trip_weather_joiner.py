@@ -1,37 +1,16 @@
-#!/usr/bin/env python3
-import pika
-import time
-import os
+
 import logging
 
 # noinspection PyUnresolvedReferences
 from messaging_protocol import decode, encode       # module provided on the container
+# noinspection PyUnresolvedReferences
+from rabbit_interface import RabbitInterface    # module provided on the container
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
-
-# Wait for rabbitmq to come up
-time.sleep(10)
-
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='rabbitmq'))
-channel = connection.channel()
-
-# Collect from weather topic
-result = channel.queue_declare(queue='', durable=True)
-weather_queue_name = result.method.queue
-channel.queue_bind(exchange='weather_topic', queue=weather_queue_name)
-
-# Collect from trip topic
-result = channel.queue_declare(queue='', durable=True)
-trip_queue_name = result.method.queue
-channel.queue_bind(exchange='trip_topic', queue=trip_queue_name)
-
-# Collect from trip topic
-channel.exchange_declare(exchange="trip-weather-topic", exchange_type="fanout")
 
 weather_info = {}
 
@@ -54,7 +33,7 @@ def config_weather(ch, method, properties, body):
     """
 
     weather = decode(body)
-    logging.info(f"action: filter_callback | result: in_progress | msg: {weather} ")
+    logging.debug(f"action: filter_callback | result: in_progress | msg: {weather} ")
 
     if weather == EOF:
         logging.info(f"action: filter_callback | result: success | msg: END OF FILE weather.")
@@ -68,7 +47,7 @@ def config_weather(ch, method, properties, body):
         logging.warning(f"action: filter_callback | result: warning | msg: key {key} already weather info. Overwriting")
 
     weather_info[key] = value
-    logging.info(f"action: filter_callback | result: success | msg: sored '{value}' value in '{key}' key")
+    logging.debug(f"action: filter_callback | result: success | msg: sored '{value}' value in '{key}' key")
 
 
 def joiner(ch, method, properties, body):
@@ -78,11 +57,11 @@ def joiner(ch, method, properties, body):
     """
 
     trip = decode(body)
-    logging.info(f"action: join_callback | result: in_progress | msg: {trip} ")
+    logging.debug(f"action: join_callback | result: in_progress | msg: {trip} ")
     
     if trip == EOF:
         logging.info(f"action: filter_callback | result: done | msg: END OF FILE trips.") 
-        channel.basic_publish(exchange="trip-weather-topic",  routing_key='', body=encode(trip))
+        rabbit.publish_topic("trip-weather-topic",  encode(trip))
         return
 
     trip_weather = ( trip[TRIP_CITY_INDEX], trip[START_DATE_INDEX].split(" ")[0])
@@ -93,20 +72,20 @@ def joiner(ch, method, properties, body):
 
     wheather = weather_info[trip_weather]
     joined = trip + wheather
-    logging.info(f"action: join_callback | result: in_progress | msg: trip and weather joined -> {joined} ")
+    logging.debug(f"action: join_callback | result: in_progress | msg: trip and weather joined -> {joined} ")
 
-    channel.basic_publish(exchange="trip-weather-topic", routing_key="", body=encode(joined))
-    logging.info(f"action: join_callback | result: success | msg: published join in topic")
+    rabbit.publish_topic("trip-weather-topic", encode(joined))
+    logging.debug(f"action: join_callback | result: success | msg: published join in topic")
 
 
-channel.basic_qos(prefetch_count=1)
-channel.basic_consume(
-    queue=weather_queue_name, on_message_callback=config_weather, auto_ack=True)
+rabbit = RabbitInterface()
+rabbit.bind_topic("weather_topic", "", dest="weathers")
+rabbit.bind_topic("trip_topic", "", dest="trips")
 
 logging.info(f"action: consuming weathers | result: in_progress ")
-channel.start_consuming()
+rabbit.consume_topic(config_weather, dest="weathers")
 
 logging.info(f"action: consuming trips | result: in_progress ")
-channel.basic_consume(
-    queue=trip_queue_name, on_message_callback=joiner, auto_ack=True)
-channel.start_consuming()
+rabbit.consume_topic(joiner, dest="trips")
+
+logging.info(f"action: consuming trips | result: done ")
