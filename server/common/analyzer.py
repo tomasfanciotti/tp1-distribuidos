@@ -1,4 +1,5 @@
 
+from .rabbit_interface import *
 from .messaging_protocol import *
 import time
 import pika
@@ -34,10 +35,10 @@ def init():
         try:
             conn = connectRabbit()
             channel = conn.channel()
-            channel.queue_declare(queue='raw_weather_data', durable=True)
-            channel.queue_declare(queue='raw_station_data', durable=True)
-            channel.queue_declare(queue='raw_trip_data', durable=True)
-            conn.close()
+            # channel.queue_declare(queue='raw_weather_data', durable=True)
+            # channel.queue_declare(queue='raw_station_data', durable=True)
+            # channel.queue_declare(queue='raw_trip_data', durable=True)
+            # conn.close()
             result = True
 
         except:
@@ -47,8 +48,7 @@ def init():
 
 def handler(client_sock):
 
-    connection = connectRabbit()
-    channel = connection.channel()
+    rabbit = RabbitInterface()
 
     while True:
         packet = receive(client_sock)
@@ -64,7 +64,7 @@ def handler(client_sock):
         elif packet.opcode == OP_CODE_INGEST_WEATHER:
 
             data = packet.get()
-            result = handle_wheather(data, channel)
+            result = handle_wheather(data, rabbit)
             if not result:
                 send(client_sock, Packet.new(OP_CODE_ERROR, "There was a problem handling weathers"))
                 logging.error(f'action: ingest_weather | result: fail | client: {addr[0]} | msg: Error in the ingestion of weathers.')
@@ -75,7 +75,7 @@ def handler(client_sock):
         elif packet.opcode == OP_CODE_INGEST_STATIONS:
 
             data = packet.get()
-            result = handle_stations(data, channel)
+            result = handle_stations(data, rabbit)
             if not result:
                 send(client_sock, Packet.new(OP_CODE_ERROR, "There was a problem handling stations"))
                 logging.error(f'action: ingest_stations | result: fail | client: {addr[0]} | msg: Error in the ingestion of stations.')
@@ -86,7 +86,7 @@ def handler(client_sock):
         elif packet.opcode == OP_CODE_INGEST_TRIPS:
 
             data = packet.get()
-            result = handle_trips(data, channel)
+            result = handle_trips(data, rabbit)
             if not result:
                 send(client_sock, Packet.new(OP_CODE_ERROR, "There was a problem handling trips"))
                 logging.error(f'action: ingest_trips | result: fail | client: {addr[0]} | msg: Error in the ingestion of trips.')
@@ -106,14 +106,14 @@ def handler(client_sock):
                 logging.info(f'action: query #1 | result: success | client: {addr[0]} | msg: query #1 retreived correctly.')
         elif packet.opcode == OP_CODE_EOF:
             data = packet.get()
-            sendEOF(data)
+            sendEOF(data, rabbit)
             send(client_sock, Packet.new(OP_CODE_ACK, "joya"))
 
         elif packet.opcode == OP_CODE_ZERO:
             logging.info(f'action: disconnected | result: success | ip: {addr[0]}')
             break
 
-    connection.close()
+    rabbit.disconnect()
 
 
 # Wait for rabbitmq to come up
@@ -126,19 +126,14 @@ TRIPS_FIELDS = 9
 
 EOF = "#"
 
-def sendEOF(archivo):
+def sendEOF(archivo, rabbit : RabbitInterface):
 
-    conn = connectRabbit()
-    channel = conn.channel()
-
-    channel.basic_publish(exchange="", routing_key="raw_weather_data", body=encode(EOF))
-    channel.basic_publish(exchange="", routing_key="raw_station_data", body=encode(EOF))
-    channel.basic_publish(exchange="", routing_key="raw_trip_data", body=encode(EOF))
-
-    conn.close()
+    rabbit.publish_queue("raw_weather_data", encode(EOF))
+    rabbit.publish_queue("raw_station_data", encode(EOF))
+    rabbit.publish_queue("raw_trip_data", encode(EOF))
 
 
-def handle_wheather(data, channel):
+def handle_wheather(data, rabbit : RabbitInterface):
 
     # Cantidad de weathers
     batch_size = int(data.pop(0))
@@ -146,8 +141,7 @@ def handle_wheather(data, channel):
     try:
         for i in range(batch_size):
             reg = data[i*WEATHER_FIELDS+1:(i+1)*WEATHER_FIELDS]
-            channel.basic_publish(exchange="", routing_key="raw_weather_data", body=encode(reg))
-
+            rabbit.publish_queue("raw_weather_data", encode(reg))
 
     except Exception as e:
 
@@ -156,7 +150,7 @@ def handle_wheather(data, channel):
     return True
 
 
-def handle_stations(data, channel):
+def handle_stations(data,  rabbit : RabbitInterface):
 
     batch_size = int(data.pop(0))
 
@@ -164,7 +158,7 @@ def handle_stations(data, channel):
 
         for i in range(batch_size):
             reg = data[i*STATION_FIELDS+1:(i+1)*STATION_FIELDS]
-            channel.basic_publish(exchange="", routing_key="raw_station_data", body=encode(reg))
+            rabbit.publish_queue("raw_station_data", encode(reg))
 
     except Exception as e:
 
@@ -173,7 +167,7 @@ def handle_stations(data, channel):
     return True
 
 
-def handle_trips(data, channel):
+def handle_trips(data, rabbit : RabbitInterface):
 
     batch_size = int(data.pop(0))
 
@@ -181,7 +175,7 @@ def handle_trips(data, channel):
 
         for i in range(batch_size):
             reg = data[i*TRIPS_FIELDS+1:(i+1)*TRIPS_FIELDS]
-            channel.basic_publish(exchange="", routing_key="raw_trip_data", body=encode(reg))
+            rabbit.publish_queue("raw_trip_data", encode(reg))
 
     except Exception as e:
 
