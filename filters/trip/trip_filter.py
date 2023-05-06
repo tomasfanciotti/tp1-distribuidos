@@ -1,7 +1,7 @@
 # noinspection PyUnresolvedReferences
-from messaging_protocol import decode, encode  # module provided on the container
-import pika
-import time
+from messaging_protocol import decode, encode   # module provided on the container
+# noinspection PyUnresolvedReferences
+from rabbit_interface import RabbitInterface    # module provided on the container
 import logging
 
 logging.basicConfig(
@@ -9,16 +9,6 @@ logging.basicConfig(
     level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
-
-# Wait for rabbitmq to come up
-time.sleep(5)
-
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='rabbitmq'))
-channel = connection.channel()
-
-channel.queue_declare(queue='raw_trip_data', durable=True)
-channel.exchange_declare(exchange='trip_topic', exchange_type='fanout')
 
 CITY_INDEX = 0
 START_DATE_INDEX = 1
@@ -39,11 +29,11 @@ def filter_trip(ch, method, properties, body):
     """
 
     reg = decode(body)
-    logging.info(f"action: filter_callback | result: in_progress | body: {reg} ")
+    logging.debug(f"action: filter_callback | result: in_progress | body: {reg} ")
 
     if reg == EOF:
         logging.info(f"action: filter_callback | result: done | msg: END OF FILE trips.")
-        ch.basic_publish(exchange="trip_topic", routing_key='', body=encode(reg))
+        rabbit.publish_topic("trip_topic", encode(reg))
         ch.basic_ack(delivery_tag=method.delivery_tag)
         return
 
@@ -55,20 +45,19 @@ def filter_trip(ch, method, properties, body):
         filtered = [reg[CITY_INDEX], reg[START_DATE_INDEX], reg[START_STATION_INDEX], reg[END_STATION_INDEX], reg[DURATION_INDEX],
                     reg[YEAR_INDEX]]
 
-        channel.basic_publish(exchange="trip_topic", routing_key='', body=encode(filtered))
+        rabbit.publish_topic("trip_topic", encode(filtered))
 
-        logging.info(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
+        logging.debug(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
     else:
         logging.error(f"action: filter_callback | result: fail | ignored due type error | data: {reg} ")
 
-    channel.basic_ack(delivery_tag=method.delivery_tag)
+    ch.basic_ack(delivery_tag=method.delivery_tag)
     logging.info(f"action: filter_callback | result: success.")
 
 
-channel.basic_consume(queue="raw_trip_data", on_message_callback=filter_trip, auto_ack=False)
+rabbit = RabbitInterface()
 
 logging.info(f"action: consuming | result: in_progress ")
-
-channel.start_consuming()
+rabbit.consume_queue("raw_trip_data", filter_trip)
 
 logging.info(f"action: consuming | result: done ")

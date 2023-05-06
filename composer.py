@@ -61,7 +61,9 @@ filter = {
     "depends_on": ["rabbitmq", "server"],
     "restart": "on-failure",
     "environment": ["PYTHONUNBUFFERED=1", "LOGGING_LEVEL=DEBUG"],
-    "volumes": ["./server/common/messaging_protocol.py:/app/messaging_protocol.py"]
+    "volumes": ["./server/common/messaging_protocol.py:/app/messaging_protocol.py",
+                "./server/common/rabbit_interface.py:/app/rabbit_interface.py"
+                ]
 }
 
 

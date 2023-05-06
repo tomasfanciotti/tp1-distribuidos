@@ -1,7 +1,7 @@
 # noinspection PyUnresolvedReferences
 from messaging_protocol import decode, encode  # module provided on the container
-import pika
-import time
+# noinspection PyUnresolvedReferences
+from rabbit_interface import RabbitInterface
 import logging
 
 logging.basicConfig(
@@ -9,16 +9,6 @@ logging.basicConfig(
     level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
-
-# Wait for rabbitmq to come up
-time.sleep(5)
-
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='rabbitmq'))
-channel = connection.channel()
-
-channel.queue_declare(queue='raw_weather_data', durable=True)
-channel.exchange_declare(exchange='weather_topic', exchange_type='fanout')
 
 CITY_INDEX = 0
 DATE_INDEX = 1
@@ -38,23 +28,22 @@ def filter_weather(ch, method, properties, body):
 
     if reg == EOF:
         logging.info(f"action: filter_callback | result: done | msg: END OF FILE trips.")
-        channel.basic_publish(exchange="weather_topic", routing_key='', body=encode(reg))
-        channel.basic_ack(delivery_tag=method.delivery_tag)
+        rabbit.publish_topic("weather_topic", encode(reg))
+        ch.basic_ack(delivery_tag=method.delivery_tag)
         return
 
     filtered = [reg[CITY_INDEX], reg[DATE_INDEX], reg[PRECTOT_INDEX]]
 
-    channel.basic_publish(exchange="weather_topic", routing_key='', body=encode(filtered))
+    rabbit.publish_topic("weather_topic", encode(filtered))
     logging.info(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
 
-    channel.basic_ack(delivery_tag=method.delivery_tag)
+    ch.basic_ack(delivery_tag=method.delivery_tag)
     logging.info(f"action: filter_callback | result: success ")
 
 
-channel.basic_consume(queue="raw_weather_data", on_message_callback=filter_weather, auto_ack=False)
+rabbit = RabbitInterface()
 
 logging.info(f"action: consuming | result: in_progress ")
-
-channel.start_consuming()
+rabbit.consume_queue("raw_weather_data", filter_weather)
 
 logging.info(f"action: consuming | result: done ")
