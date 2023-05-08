@@ -2,7 +2,7 @@
 
 from configparser import ConfigParser
 from common.server import Server
-from common.analyzer import handler
+from common.analyzer import Analyzer
 import logging
 import os
 
@@ -48,8 +48,9 @@ def main():
     logging.debug(f"action: config | result: success | port: {port} | "
                   f"listen_backlog: {listen_backlog} | logging_level: {logging_level}")
 
+    analyzer = Analyzer()
     # Initialize server and start server loop
-    server = Server(port, listen_backlog, handler)
+    server = Server(port, listen_backlog, analyzer)
     server.run()
 
 def initialize_log(logging_level):

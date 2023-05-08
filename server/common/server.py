@@ -1,21 +1,25 @@
 import socket
 import logging
 import signal
-from .messaging_protocol import Packet, receive, send
-from .analyzer import handle_wheather, handle_stations, handle_trips, handle_query_1, sendEOF, connectRabbit
 import concurrent
 from concurrent.futures import ThreadPoolExecutor
 
 
+class ServerInterface:
+
+    def handle_client(self, s: socket.socket):
+        pass
+
+
 class Server:
-    def __init__(self, port, listen_backlog, handler):
+    def __init__(self, port, listen_backlog, iface: ServerInterface):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self.listening = True
         signal.signal(signal.SIGTERM, self.__stop_listening)
-        self.handler = handler
+        self.iface = iface
 
     def __stop_listening(self, *args):
         self.listening = False
@@ -38,7 +42,7 @@ class Server:
     def __handle_client_connection(self, client_sock):
 
         try:
-            self.handler(client_sock)
+            self.iface.handle_client(client_sock)
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
         finally:
