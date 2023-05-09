@@ -78,9 +78,15 @@ class RabbitInterface:
 
                 self.channel.queue_bind(self.annon_q[dest], exchange=ex, routing_key=routing_key[ex])
 
-    def publish_topic(self, topic, msg, routing_key=""):
+    def publish_topic(self, topic, msg, routing_key="", headers = None):
 
-        self.channel.basic_publish(exchange=topic,  routing_key=routing_key, body=msg)
+        if headers is not None:
+            self.channel.basic_publish(exchange=topic,
+                                       routing_key=routing_key,
+                                       body=msg,
+                                       properties=pika.BasicProperties(headers=headers))
+        else:
+            self.channel.basic_publish(exchange=topic,  routing_key=routing_key, body=msg)
 
     def consume_topic(self, callback, dest='default', auto_ack=False):
 
@@ -89,9 +95,15 @@ class RabbitInterface:
 
         self.channel.start_consuming()
 
-    def publish_queue(self, queue, msg):
+    def publish_queue(self, queue, msg, headers = None):
 
-        self.channel.basic_publish(exchange="",  routing_key=queue, body=msg)
+        if headers is not None:
+            self.channel.basic_publish(exchange="",
+                                       routing_key=queue,
+                                       body=msg,
+                                       properties=pika.BasicProperties(headers=headers))
+        else:
+            self.channel.basic_publish(exchange="",  routing_key=queue, body=msg)
 
     def consume_queue(self, queue, callback, auto_ack=False):
         self.channel.basic_consume(

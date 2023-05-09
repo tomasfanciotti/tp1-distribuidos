@@ -1,5 +1,6 @@
 from .rabbit_interface import *
 from .messaging_protocol import *
+from .eof import EOF
 import time
 
 # Excepcionales
@@ -27,7 +28,6 @@ WEATHER_FIELDS = 22
 STATION_FIELDS = 7
 TRIPS_FIELDS = 9
 
-EOF = "#"
 
 
 class Analyzer(ServerInterface):
@@ -111,9 +111,10 @@ class Analyzer(ServerInterface):
 
     def sendEOF(self, archivo, rabbit: RabbitInterface):
 
-        rabbit.publish_queue("raw_weather_data", encode(EOF))
-        rabbit.publish_queue("raw_station_data", encode(EOF))
-        rabbit.publish_queue("raw_trip_data", encode(EOF))
+        eof = EOF("start","server").encode()
+        rabbit.publish_queue("raw_weather_data", eof, headers={"original":"true"})
+        rabbit.publish_queue("raw_station_data", eof, headers={"original":"true"})
+        rabbit.publish_queue("raw_trip_data", eof, headers={"original":"true"})
 
     def handle_wheather(self, data, rabbit: RabbitInterface):
 
@@ -126,7 +127,8 @@ class Analyzer(ServerInterface):
                 rabbit.publish_queue("raw_weather_data", encode(reg))
 
         except Exception as e:
-
+            logging.error(
+                f'action: analyzer_handle_wheather | result: fail | msg: {e}')
             return False
 
         return True
@@ -142,7 +144,8 @@ class Analyzer(ServerInterface):
                 rabbit.publish_queue("raw_station_data", encode(reg))
 
         except Exception as e:
-
+            logging.error(
+                f'action: analyzer_handle_stations | result: fail | msg: {e}')
             return False
 
         return True
@@ -158,7 +161,8 @@ class Analyzer(ServerInterface):
                 rabbit.publish_queue("raw_trip_data", encode(reg))
 
         except Exception as e:
-
+            logging.error(
+                f'action: analyzer_handle_stations | result: fail | msg: {e}')
             return False
 
         return True

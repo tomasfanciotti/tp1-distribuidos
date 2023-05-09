@@ -62,10 +62,20 @@ filter = {
     "restart": "on-failure",
     "environment": ["PYTHONUNBUFFERED=1", "LOGGING_LEVEL=DEBUG"],
     "volumes": ["./server/common/messaging_protocol.py:/app/messaging_protocol.py",
-                "./server/common/rabbit_interface.py:/app/rabbit_interface.py"
+                "./server/common/rabbit_interface.py:/app/rabbit_interface.py",
+                "./server/common/eof.py:/app/eof.py"
                 ]
 }
 
+eof_manager = {
+    "container_name": "eof_manager",
+    "image": "python-filter:latest",
+    "networks": [NETWORK_NAME],
+    "entrypoint": "python3 /app/eof_manager.py",
+    "depends_on": ["rabbitmq", "server"],
+    "environment": ["PYTHONUNBUFFERED=1", "LOGGING_LEVEL=DEBUG"],
+    "volumes":  ["./server/common/:/app/"]
+}
 
 
 def generate(clients):
@@ -153,7 +163,7 @@ def generate(clients):
     services["query3_filter4"]["entrypoint"] = "python3 /app/filter.py"
     services["query3_filter4"]["volumes"].append("./filters/query3/filter.py:/app/filter.py")
 
-
+    services["eof_manager"] = eof_manager
     services["rabbitmq"] = rabbit
 
     config["services"] = services

@@ -1,0 +1,17 @@
+{
+  "stages":
+  [
+    {
+      "name": "raw_weather_filter",
+      "source": {
+        "type": "queue",
+        "name": "raw_weather_data"
+      },
+      "response": {
+        "type": "topic",
+        "name": "weather_topic"
+      },
+      "replicas": 2
+    }
+  ]
+}
