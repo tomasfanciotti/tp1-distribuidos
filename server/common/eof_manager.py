@@ -25,16 +25,27 @@ def load_config():
 
         for stage in config["stages"]:
             result[stage["name"]] = {"source": stage["source"],
-                                     "response": stage["response"],
-                                     "replicas": stage["replicas"]
+                                     "response": stage["response"]
                                      }
 
     logging.info(f'action: load_config | result: success | config: {result}')
     return result
 
 
-def handler(ch, method, properties, body):
+def check_error(stage):
+    error = False
 
+    if stage not in config:
+        logging.error(f'action: handle_eof | result: error | msg: no config for stage {stage}')
+        error = True
+    if stage not in listeners:
+        logging.error(f'action: handle_eof | result: error | msg: no listeners for stage {stage}')
+        error = True
+
+    return error
+
+
+def handler(ch, method, properties, body):
     msg = decode(body)
     logging.info(f'action: handle_msg | result: in_progress | msg: {msg}')
 
@@ -63,6 +74,10 @@ def handler(ch, method, properties, body):
         original = properties.headers.get("original")
         logging.info(f'action: handle_eof | result: in_progress | stage: {stage} | node: {notifier}')
 
+        if check_error(stage):
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
+
         source_type = config[stage]["source"]["type"]
         if source_type == "queue" and original == "true":
             for node in listeners[stage]:
@@ -84,12 +99,11 @@ def handler(ch, method, properties, body):
 
 
 def check_all_eof(stage_name, rabbit: RabbitInterface):
-
     all_eof = True
     for data in listeners[stage_name].values():
         all_eof &= data["EOF"]
 
-    if all_eof:
+    if all_eof and len(config[stage_name]["response"]) == 2:
 
         response_type = config[stage_name]["response"]["type"]
         output_name = config[stage_name]["response"]["name"]

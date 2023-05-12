@@ -2,6 +2,7 @@
   "stages":
   [
     {
+      "id": 0,
       "name": "raw_weather_filter",
       "source": {
         "type": "queue",
@@ -10,8 +11,61 @@
       "response": {
         "type": "topic",
         "name": "weather_topic"
+      }
+    },
+    {
+      "id": 1,
+      "name": "raw_trip_filter",
+      "source": {
+        "type": "queue",
+        "name": "raw_trip_data"
       },
-      "replicas": 2
+      "response": {
+        "type": "topic",
+        "name": "trip_topic"
+      }
+    },
+    {
+      "id": 2,
+      "name": "weather_joiner_config",
+      "source": {
+        "type": "topic",
+        "name": "weather_topic"
+      },
+      "response": {}
+    },
+    {
+      "id": 3,
+      "name": "weather_join",
+      "source": {
+        "type": "topic",
+        "name": "trip_topic"
+      },
+      "response": {
+        "type": "topic",
+        "name": "trip-weather-topic"
+      }
+    },
+    {
+      "id": 4,
+      "name": "prectot_filter",
+      "source": {
+        "type": "topic",
+        "name": "trip-weather-topic"
+      },
+      "response": {
+        "type": "queue",
+        "name": "query1-pipe1"
+      }
+    },
+    {
+      "id": 5,
+      "name": "average_calc",
+      "source": {
+        "type": "queue",
+        "name": "query1-pipe1"
+      },
+      "response": { }
     }
   ]
 }
