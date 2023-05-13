@@ -5,6 +5,7 @@ from rabbit_interface import RabbitInterface
 # noinspection PyUnresolvedReferences
 from eof import EOF, send_EOF, add_listener
 import logging
+import os
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -16,7 +17,8 @@ logging.basicConfig(
 logging.getLogger("pika").setLevel(logging.WARNING)
 
 STAGE = "raw_weather_filter"
-NODE_ID = "1"
+NODE_ID = os.environ.get('HOSTNAME')
+print("Hostname: ", NODE_ID)
 
 CITY_INDEX = 0
 DATE_INDEX = 1

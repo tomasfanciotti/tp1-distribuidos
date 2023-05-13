@@ -93,9 +93,11 @@ def generate(clients):
 
     # Raw Data Filters
     services["weather_filter"] = deepcopy(filter)
-    services["weather_filter"]["container_name"] = "weather_filter"
+    # services["weather_filter"]["container_name"] = "weather_filter"
     services["weather_filter"]["entrypoint"] = "python3 /app/weather_filter.py"
     services["weather_filter"]["volumes"].append("./filters/weather/weather_filter.py:/app/weather_filter.py")
+    services["weather_filter"]["deploy"] = {}
+    services["weather_filter"]["deploy"]["replicas"] = 2
 
     services["station_filter"] = deepcopy(filter)
     services["station_filter"]["container_name"] = "station_filter"

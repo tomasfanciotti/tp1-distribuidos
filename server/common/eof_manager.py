@@ -6,7 +6,7 @@ import logging
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level="DEBUG",
+    level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 
@@ -78,18 +78,19 @@ def handler(ch, method, properties, body):
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
-        source_type = config[stage]["source"]["type"]
-        if source_type == "queue" and original == "true":
-            for node in listeners[stage]:
-                logging.debug(f'action: pushing EOF | result: in_progress | stage: {stage} | node: {node}')
-                if node == notifier: continue
-                rabbit.publish_queue(config[stage]["source"]["name"], encode(EOF), headers={"original": False})
-                logging.debug(f'action: handle_eof | result: in_progress | msg: forwarding EOF to {node}')
-
         listeners[stage][notifier]["EOF"] = True
 
-        logging.info(f'action: handle_eof | result: in_progress | msg: checking stage EOF')
-        check_all_eof(stage, rabbit)
+        all_eof = True
+        for data in listeners[stage].values():
+            all_eof &= data["EOF"]
+
+        if all_eof:
+            publish_eof_to_next_stage(stage, rabbit)
+        else:
+            if config[stage]["source"]["type"] == "queue" and original == "true":
+                notify_eof(stage, notifier)
+
+        logging.info(f'action: handle_eof | result: in_progress | stage_ready: {all_eof}')
 
     else:
         logging.info(f'action: handle_msg | result: fail | msg: no recognized opcode {opcode} with params {params}')
@@ -98,12 +99,9 @@ def handler(ch, method, properties, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
-def check_all_eof(stage_name, rabbit: RabbitInterface):
-    all_eof = True
-    for data in listeners[stage_name].values():
-        all_eof &= data["EOF"]
+def publish_eof_to_next_stage(stage_name, rabbit: RabbitInterface):
 
-    if all_eof and len(config[stage_name]["response"]) == 2:
+    if len(config[stage_name]["response"]) == 2:
 
         response_type = config[stage_name]["response"]["type"]
         output_name = config[stage_name]["response"]["name"]
@@ -111,17 +109,24 @@ def check_all_eof(stage_name, rabbit: RabbitInterface):
 
         if response_type == "topic":
             rabbit.publish_topic(output_name, eof, headers={"original": True})
-            logging.info(f'action: check_all_eof | result: in_progress | msg: published EOF in topic {output_name}')
+            logging.info(f'action: publish_eof | result: in_progress | msg: published EOF in topic {output_name}')
 
         elif response_type == "queue":
             rabbit.publish_queue(output_name, eof, headers={"original": True})
-            logging.info(f'action: check_all_eof | result: in_progress | msg: published EOF in queue {output_name}')
+            logging.info(f'action: publish_eof | result: in_progress | msg: published EOF in queue {output_name}')
 
         else:
-            logging.info(f'action: check_all_eof | result: fail | msg: unexpected response type {response_type}')
+            logging.info(f'action: publish_eof | result: fail | msg: unexpected response type {response_type}')
             return
 
-    logging.info(f'action: check_all_eof | result: success | stage: {stage_name} | all_eof: {all_eof}.')
+
+def notify_eof(stage, notifier):
+
+    for node in listeners[stage]:
+        logging.debug(f'action: pushing EOF | result: in_progress | stage: {stage} | node: {node}')
+        if node == notifier: continue
+        rabbit.publish_queue(config[stage]["source"]["name"], EOF(stage, "manager").encode(), headers={"original": False})
+        logging.debug(f'action: handle_eof | result: in_progress | msg: forwarding EOF to {node}')
 
 
 # Status
