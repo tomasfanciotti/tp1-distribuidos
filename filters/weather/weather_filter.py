@@ -20,7 +20,7 @@ NODE_ID = "1"
 
 CITY_INDEX = 0
 DATE_INDEX = 1
-PRECTOT_INDEX = 3
+PRECTOT_INDEX = 2
 
 
 def filter_weather(ch, method, properties, body):

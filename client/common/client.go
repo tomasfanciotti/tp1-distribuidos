@@ -2,10 +2,10 @@ package common
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -14,11 +14,13 @@ import (
 )
 
 const (
-	WAITING_PERIOD = 4
-	MAX_BATCH_SIZE = 2
-	WEATHER_TYPE   = "weather.csv"
-	STATION_TYPE   = "station.csv"
-	TRIP_TYPE      = "trip.csv"
+	WAITING_PERIOD   = 4
+	MAX_BATCH_SIZE   = 1000
+	WEATHER_FILE     = "weather.csv"
+	STATION_FILE     = "station.csv"
+	TRIP_FILE        = "trip.csv"
+	FINISH_MESSAGE   = "FIN"
+	EXPECTED_QUERIES = 3
 )
 
 // ClientConfig Configuration used by the client
@@ -27,9 +29,7 @@ type ClientConfig struct {
 	ServerAddress string
 	LoopLapse     time.Duration
 	LoopPeriod    time.Duration
-	WetherFile    string
-	StationsFile  string
-	TripsFile     string
+	DataSource    string
 }
 
 // Client Entity that encapsulates how
@@ -71,6 +71,33 @@ type BatchUnitData struct {
 	data      []string
 }
 
+func readFoldercontent(DataFolder string) ([]string, error) {
+
+	dir, err := os.Open(DataFolder)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	defer dir.Close()
+
+	fileInfos, err := dir.Readdir(-1)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	result := []string{}
+	for _, fileInfo := range fileInfos {
+
+		if fileInfo.IsDir() && fileInfo.Name() != ".DS_STORE" {
+			result = append(result, fileInfo.Name())
+		}
+
+	}
+
+	return result, nil
+}
+
 func batchDataProcessor(c *Client, fileName string, handler func(*Client, []BatchUnitData) bool, expected_fields int, batchType string, city string) (int, bool) {
 
 	file, err := os.Open(fileName)
@@ -87,6 +114,11 @@ func batchDataProcessor(c *Client, fileName string, handler func(*Client, []Batc
 	result := true
 
 	for scanner.Scan() {
+
+		if !c.running {
+			log.Infof("action: scan_batch_file | result: error | msg: client is shutting down")
+			return 0, false
+		}
 
 		campos := strings.Split(strings.TrimRight(scanner.Text(), "\n"), ",")
 
@@ -117,7 +149,7 @@ func batchDataProcessor(c *Client, fileName string, handler func(*Client, []Batc
 
 func (c *Client) SetupGracefulShutdown() {
 
-	sigChan := make(chan os.Signal)
+	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
@@ -202,74 +234,84 @@ func (c *Client) Start() {
 	c.createClientSocket()
 
 	c.analyzer = NewAnalyzer(&c.conn)
+	c.running = true
 
 	// Ruta de la carpeta principal que contiene las ciudades
-	root := "/app/data/"
-
-	// Función que se ejecutará para cada archivo encontrado
-	// Recibe la ruta del archivo y su información
-	visit := func(path string, info os.FileInfo, err error) error {
-		// Si no es un archivo CSV, se omite
-		if !strings.HasSuffix(path, ".csv") {
-			return nil
-		}
-
-		splitted := strings.Split(path, "/")
-		file_type := splitted[len(splitted)-1]
-		city := splitted[len(splitted)-2]
-
-		log.Infof("action: walk_files | result: in_progress | city: %v | file: %v", city, file_type)
-
-		if file_type == WEATHER_TYPE {
-
-			// Weathers
-			registers, result := batchDataProcessor(c, path, ingestWeatherHandler, 20, "WEATHER", city)
-
-			if !result {
-				log.Warnf("action: send_weather | result: warning | client_id: %v | msg: some weather batch could not be send", c.config.ID)
-			}
-
-			log.Infof("action: send_weather | result: success | client_id: %v | msg: sent %v weather batchs.", c.config.ID, registers)
-
-		} else if file_type == STATION_TYPE {
-
-			// Stations
-			registers, result := batchDataProcessor(c, path, ingestStationHandler, 5, "STATION", city)
-
-			if !result {
-				log.Warnf("action: send_stations | result: warning | client_id: %v | msg: some station batch could not be send", c.config.ID)
-			}
-			log.Infof("action: send_stations | result: success | client_id: %v | msg: sent %v station batchs.", c.config.ID, registers)
-
-		} else if file_type == TRIP_TYPE {
-
-			// Trips
-			registers, result := batchDataProcessor(c, path, ingestTripsHandler, 7, "TRIP", city)
-
-			if !result {
-				log.Warnf("action: send_trips | result: warning | client_id: %v | msg: some trips batch could not be send", c.config.ID)
-			}
-			log.Infof("action: send_trips | result: success | client_id: %v | msg: sent %v trips batchs.", c.config.ID, registers)
-		}
-
-		return nil
-	}
-
-	// Se recorre el directorio raíz y sus subdirectorios
-	err := filepath.Walk(root, visit)
+	root := c.config.DataSource
+	cities, err := readFoldercontent(root)
 	if err != nil {
-		log.Errorf("action: load_data | result: fail | client_id: %v | msg: %v", c.config.ID, err)
+		log.Errorf("action: get_files | result: fail | root: %v | err: %v", root, err)
+		c.running = false
 		return
 	}
 
-	c.analyzer.SendEOF("")
+	log.Infof("action: get_files | result: success | cities: %v", cities)
 
-	_, err = c.analyzer.Query1()
-	if err != nil {
-		log.Errorf("action: query #1 | result: fail | client_id: %v | msg: %v", c.config.ID, err)
+	// Send Weather
+	for _, city := range cities {
+
+		registers, result := batchDataProcessor(c, root+city+"/"+WEATHER_FILE, ingestWeatherHandler, 20, "WEATHER", city)
+
+		if !result {
+			log.Warnf("action: send_weather | result: warning | client_id: %v | msg: some weather batch could not be send in city %v", c.config.ID, city)
+		}
+
+		log.Infof("action: send_weather | result: success | client_id: %v | msg: sent %v weather batchs of city %v.", c.config.ID, registers, city)
 	}
 
+	c.analyzer.SendEOF("weathers")
+
+	// Send Stations
+	for _, city := range cities {
+
+		registers, result := batchDataProcessor(c, root+city+"/"+STATION_FILE, ingestStationHandler, 5, "STATION", city)
+
+		if !result {
+			log.Warnf("action: send_stations | result: warning | client_id: %v | msg: some station batch could not be send", c.config.ID)
+		}
+		log.Infof("action: send_stations | result: success | client_id: %v | msg: sent %v station batchs.", c.config.ID, registers)
+	}
+
+	c.analyzer.SendEOF("stations")
+
+	// Send Trips
+	for _, city := range cities {
+
+		registers, result := batchDataProcessor(c, root+city+"/"+TRIP_FILE, ingestTripsHandler, 7, "TRIP", city)
+
+		if !result {
+			log.Warnf("action: send_trips | result: warning | client_id: %v | msg: some trips batch could not be send", c.config.ID)
+		}
+		log.Infof("action: send_trips | result: success | client_id: %v | msg: sent %v trips batchs.", c.config.ID, registers)
+	}
+
+	c.analyzer.SendEOF("trips")
+
+	responses := 0
+	for responses < EXPECTED_QUERIES && c.running {
+
+		result, err := c.analyzer.GetQueries()
+		if err != nil {
+			log.Errorf("action: query_request | result: fail | client_id: %v | msg: %v", c.config.ID, err)
+			break
+
+		} else if result == FINISH_MESSAGE {
+			log.Infof("action: query_request | result: finish ")
+			break
+
+		} else if result != "" {
+			log.Infof("action: query_request | result: success | msg: %v", result)
+			responses += 1
+
+		} else {
+			log.Infof("action: query_request | result: fail | msg: no queries ready, waiting..")
+			time.Sleep(WAITING_PERIOD * time.Second)
+		}
+	}
+
+	c.conn.Close()
+
 	// End
-	log.Infof("action: execution | result: success | client_id: %v", c.config.ID)
+	log.Infof("action: main | result: success | client_id: %v", c.config.ID)
 
 }

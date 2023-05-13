@@ -11,6 +11,7 @@ MAX_PACKET_SIZE = 8192
 # Encoders and decoders
 
 def encode(data):
+
     if type(data) == int:
         return str(int).encode()
 
@@ -19,6 +20,9 @@ def encode(data):
 
     if type(data) == list:
         return ("#".join(data) + "#").encode()
+
+    if type(data) == bytes:
+        return data
 
 
 def decode(data):

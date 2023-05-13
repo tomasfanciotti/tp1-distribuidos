@@ -3,9 +3,18 @@ from .messaging_protocol import *
 from .eof import EOF
 import time
 
-# Excepcionales
 from .server import ServerInterface
 
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    level="info",
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
+
+# reduce pika log level
+logging.getLogger("pika").setLevel(logging.WARNING)
+
+# Excepcionales
 OP_CODE_CORRUPTED_REQUEST = -1
 OP_CODE_ZERO = 0
 
@@ -18,8 +27,11 @@ OP_CODE_INGEST_TRIPS = 5
 OP_CODE_ACK = 6
 OP_CODE_QUERY1 = 7
 OP_CODE_RESPONSE_QUERY1 = 8
-OP_CODE_ERROR = 9
-OP_CODE_EOF = 10
+OP_CODE_RESPONSE_QUERY2 = 9
+OP_CODE_RESPONSE_QUERY3 = 10
+OP_CODE_FINISH = 11
+OP_CODE_ERROR = 12
+OP_CODE_EOF = 13
 
 # Wait for rabbitmq to come up
 time.sleep(10)
@@ -89,15 +101,15 @@ class Analyzer(ServerInterface):
             elif packet.opcode == OP_CODE_QUERY1:
 
                 data = packet.get()
-                result = self.handle_query_1()
-                if result is None:
+                opcode, result = self.handle_querys(rabbit)
+                if opcode is None or result is None:
                     send(s, Packet.new(OP_CODE_ERROR, "No seras muy fantaseosa vos?"))
                     logging.error(
-                        f'action: query #1 | result: fail | client: {addr[0]} | msg: Error in the retreival of query #1.')
+                        f'action: handle_querys | result: fail | client: {addr[0]} | msg: {result}.')
                 else:
-                    send(s, Packet.new(OP_CODE_RESPONSE_QUERY1, result))
+                    send(s, Packet.new(opcode, result))
                     logging.info(
-                        f'action: query #1 | result: success | client: {addr[0]} | msg: query #1 retreived correctly.')
+                        f'action: handle_querys | result: success | client: {addr[0]} | msg: {result}')
             elif packet.opcode == OP_CODE_EOF:
                 data = packet.get()
                 self.sendEOF(data, rabbit)
@@ -111,10 +123,17 @@ class Analyzer(ServerInterface):
 
     def sendEOF(self, archivo, rabbit: RabbitInterface):
 
-        eof = EOF("start","server").encode()
-        rabbit.publish_queue("raw_weather_data", eof, headers={"original":"true"})
-        rabbit.publish_queue("raw_station_data", eof, headers={"original":"true"})
-        rabbit.publish_queue("raw_trip_data", eof, headers={"original":"true"})
+        eof = EOF("start", "server").encode()
+        if archivo == "weathers":
+            rabbit.publish_queue("raw_weather_data", eof, headers={"original":"true"})
+        elif archivo == "stations":
+            rabbit.publish_queue("raw_station_data", eof, headers={"original":"true"})
+        elif archivo == "trips":
+            rabbit.publish_queue("raw_trip_data", eof, headers={"original":"true"})
+        else:
+            return
+
+        logging.info(f'action: sending EOF | result: success | file: {archivo}')
 
     def handle_wheather(self, data, rabbit: RabbitInterface):
 
@@ -167,5 +186,22 @@ class Analyzer(ServerInterface):
 
         return True
 
-    def handle_query_1(self):
-        return None
+    def handle_querys(self, rabbit):
+
+        method_frame, header_frame, body = rabbit.channel.basic_get('query1-pipe2')
+        if method_frame:
+            rabbit.channel.basic_ack(method_frame.delivery_tag)
+            return OP_CODE_RESPONSE_QUERY1, body
+
+        method_frame, header_frame, body = rabbit.channel.basic_get('query2-pipe2')
+        if method_frame:
+            rabbit.channel.basic_ack(method_frame.delivery_tag)
+            return OP_CODE_RESPONSE_QUERY2, body
+
+        method_frame, header_frame, body = rabbit.channel.basic_get('query3-pipe4')
+        if method_frame:
+            rabbit.channel.basic_ack(method_frame.delivery_tag)
+            return OP_CODE_RESPONSE_QUERY3, body
+
+
+        return OP_CODE_FINISH, "para wacha"

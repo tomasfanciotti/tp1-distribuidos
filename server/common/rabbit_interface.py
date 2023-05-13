@@ -54,7 +54,9 @@ class RabbitInterface:
         self.channel.queue_declare(queue='query3-pipe1', durable=True)
         self.channel.queue_declare(queue='query3-pipe2', durable=True)
         self.channel.queue_declare(queue='query3-pipe3', durable=True)
+        self.channel.queue_declare(queue='query3-pipe4', durable=True)
 
+        self.channel.queue_declare(queue='EOF_queue', durable=True)
 
     def bind_topic(self, exchange, routing_key, dest='default'):
 
