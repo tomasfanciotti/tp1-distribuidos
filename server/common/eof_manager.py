@@ -27,8 +27,9 @@ def load_config():
             result[stage["name"]] = {"source": stage["source"],
                                      "response": stage["response"]
                                      }
+            logging.info(f'action: load_config | stage: {stage["name"]} | '
+                         f'source: {stage["source"]} | response: {stage["response"]}')
 
-    logging.info(f'action: load_config | result: success | config: {result}')
     return result
 
 
@@ -105,10 +106,10 @@ def handler(ch, method, properties, body):
 
 def publish_eof_to_next_stage(stage_name, rabbit: RabbitInterface):
 
-    if len(config[stage_name]["response"]) == 2:
+    for response_config in config[stage_name]["response"]:
 
-        response_type = config[stage_name]["response"]["type"]
-        output_name = config[stage_name]["response"]["name"]
+        response_type = response_config["type"]
+        output_name = response_config["name"]
         eof = EOF(stage_name, "manager").encode()
 
         if response_type == "topic":

@@ -1,14 +1,23 @@
 import logging
+import os
 # noinspection PyUnresolvedReferences
-from messaging_protocol import decode, encode       # module provided on the container
+from messaging_protocol import decode, encode  # module provided on the container
 # noinspection PyUnresolvedReferences
-from rabbit_interface import RabbitInterface    # module provided on the container
+from eof_controller import EOFController
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
+
+# reduce pika log level
+logging.getLogger("pika").setLevel(logging.WARNING)
+
+CONFIG_STAGE = "station_joiner_config"
+JOIN_STAGE = "station_join"
+NODE_ID = os.environ.get('HOSTNAME')
+logging.info(f"action: trip_station_joiner | result: startup | node_id: {NODE_ID}")
 
 # station file
 CITY_ID = 0
@@ -23,7 +32,9 @@ TRIP_YEAR_ID = 5
 
 station_info = {}
 
-EOF = "#"
+
+def log_eof(ch, method, properties, body):
+    logging.info(f"action: callback | result: success | msg: received EOF - {body}")
 
 
 def config_station(ch, method, properties, body):
@@ -34,11 +45,6 @@ def config_station(ch, method, properties, body):
 
     station = decode(body)
     logging.debug(f"action: config_callback | result: in_progress | body: {station} ")
-
-    if station == EOF:
-        logging.info(f"action: config_callback | result: success | msg: END OF FILE station.")
-        ch.stop_consuming()
-        return
 
     key = (station[CITY_ID], station[STATION_ID], station[STATION_YEAR_ID])
     value = [station[i] for i in range(len(station)) if i != STATION_ID and i != STATION_YEAR_ID and i != CITY_ID]
@@ -60,12 +66,6 @@ def joiner(ch, method, properties, body):
 
     trip = decode(body)
     logging.info(f"action: join_callback | result: in_progress | msg: {trip} ")
-
-    if trip == EOF:
-        logging.info(f"action: filter_callback | result: success | msg: END OF FILE trips.") 
-        rabbit.publish_topic("trip-start-station-topic", encode(trip))
-        rabbit.publish_topic("trip-end-station-topic", encode(trip))
-        return
 
     trip_start_station = (trip[CITY_ID], trip[START_STATION], trip[TRIP_YEAR_ID])
     trip_end_station = (trip[CITY_ID], trip[END_STATION], trip[TRIP_YEAR_ID])
@@ -95,14 +95,19 @@ def joiner(ch, method, properties, body):
     logging.debug(f"action: join_callback | result: success | msg: published join in topic")
 
 
-rabbit = RabbitInterface()
+rabbit = EOFController(CONFIG_STAGE, NODE_ID, on_eof=log_eof, stop_on_eof=True)
 rabbit.bind_topic("station_topic", "", dest="stations")
 rabbit.bind_topic("trip_topic", "", dest="trips")
 
 logging.info(f"action: consuming stations | result: in_progress ")
 rabbit.consume_topic(config_station, dest="stations" )
 
+rabbit.set_stage(JOIN_STAGE)
+rabbit.set_on_eof(log_eof, stop=False)
+
 logging.info(f"action: consuming trips | result: in_progress ")
-rabbit.consume_topic(joiner, dest="trips" )
+rabbit.consume_topic(joiner, dest="trips")
 
 logging.info(f"action: consuming trips | result: done ")
+
+rabbit.disconnect()

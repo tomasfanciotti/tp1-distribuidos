@@ -8,10 +8,12 @@
         "type": "queue",
         "name": "raw_weather_data"
       },
-      "response": {
-        "type": "topic",
-        "name": "weather_topic"
-      }
+      "response": [
+        {
+          "type": "topic",
+          "name": "weather_topic"
+        }
+      ]
     },
     {
       "id": 1,
@@ -20,10 +22,26 @@
         "type": "queue",
         "name": "raw_trip_data"
       },
-      "response": {
-        "type": "topic",
-        "name": "trip_topic"
-      }
+      "response": [
+        {
+          "type": "topic",
+          "name": "trip_topic"
+        }
+      ]
+    },
+    {
+      "id": 0,
+      "name": "raw_station_filter",
+      "source": {
+        "type": "queue",
+        "name": "raw_station_data"
+      },
+      "response": [
+        {
+          "type": "topic",
+          "name": "station_topic"
+        }
+      ]
     },
     {
       "id": 2,
@@ -32,7 +50,7 @@
         "type": "topic",
         "name": "weather_topic"
       },
-      "response": {}
+      "response": []
     },
     {
       "id": 3,
@@ -41,10 +59,40 @@
         "type": "topic",
         "name": "trip_topic"
       },
-      "response": {
+      "response": [
+        {
+          "type": "topic",
+          "name": "trip-weather-topic"
+        }
+      ]
+    },
+
+    {
+      "id": 2,
+      "name": "station_joiner_config",
+      "source": {
         "type": "topic",
-        "name": "trip-weather-topic"
-      }
+        "name": "station_topic"
+      },
+      "response": []
+    },
+    {
+      "id": 3,
+      "name": "station_join",
+      "source": {
+        "type": "topic",
+        "name": "trip_topic"
+      },
+      "response": [
+        {
+          "type": "topic",
+          "name": "trip-start-station-topic"
+        },
+        {
+          "type": "topic",
+          "name": "trip-end-station-topic"
+        }
+      ]
     },
     {
       "id": 4,
@@ -53,10 +101,12 @@
         "type": "topic",
         "name": "trip-weather-topic"
       },
-      "response": {
-        "type": "queue",
-        "name": "query1-pipe1"
-      }
+      "response": [
+        {
+          "type": "queue",
+          "name": "query1-pipe1"
+        }
+      ]
     },
     {
       "id": 5,
@@ -65,7 +115,30 @@
         "type": "queue",
         "name": "query1-pipe1"
       },
-      "response": { }
+      "response": [ ]
+    },
+    {
+      "id": 4,
+      "name": "q2-filter",
+      "source": {
+        "type": "topic",
+        "name": "trip-start-station-topic"
+      },
+      "response": [
+        {
+          "type": "queue",
+          "name": "query2-pipe1"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "q2-counter",
+      "source": {
+        "type": "queue",
+        "name": "query2-pipe1"
+      },
+      "response": [ ]
     }
   ]
 }
