@@ -1,6 +1,6 @@
 import time
-
 import pika
+
 
 class RabbitInterface:
 
@@ -23,7 +23,6 @@ class RabbitInterface:
         connection = pika.BlockingConnection(
             pika.ConnectionParameters(host='rabbitmq'))
         return connection
-
 
     def init(self):
 
@@ -80,7 +79,7 @@ class RabbitInterface:
 
                 self.channel.queue_bind(self.annon_q[dest], exchange=ex, routing_key=routing_key[ex])
 
-    def publish_topic(self, topic, msg, routing_key="", headers = None):
+    def publish_topic(self, topic, msg, routing_key="", headers=None):
 
         if headers is not None:
             self.channel.basic_publish(exchange=topic,
@@ -88,7 +87,7 @@ class RabbitInterface:
                                        body=msg,
                                        properties=pika.BasicProperties(headers=headers))
         else:
-            self.channel.basic_publish(exchange=topic,  routing_key=routing_key, body=msg)
+            self.channel.basic_publish(exchange=topic, routing_key=routing_key, body=msg)
 
     def consume_topic(self, callback, dest='default', auto_ack=False):
 
@@ -97,7 +96,7 @@ class RabbitInterface:
 
         self.channel.start_consuming()
 
-    def publish_queue(self, queue, msg, headers = None):
+    def publish_queue(self, queue, msg, headers=None):
 
         if headers is not None:
             self.channel.basic_publish(exchange="",
@@ -105,7 +104,7 @@ class RabbitInterface:
                                        body=msg,
                                        properties=pika.BasicProperties(headers=headers))
         else:
-            self.channel.basic_publish(exchange="",  routing_key=queue, body=msg)
+            self.channel.basic_publish(exchange="", routing_key=queue, body=msg)
 
     def consume_queue(self, queue, callback, auto_ack=False):
         self.channel.basic_consume(
@@ -114,4 +113,8 @@ class RabbitInterface:
         self.channel.start_consuming()
 
     def disconnect(self):
+
+        for q in self.annon_q:
+            self.channel.queue_delete(queue=q)
+
         self.conn.close()

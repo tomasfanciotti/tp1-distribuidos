@@ -5,6 +5,6 @@ loop:
   lapse: "0m20s"
   period: "5s"
 log:
-  level: "info"
+  level: "debug"
 batching:
   size: "1000"

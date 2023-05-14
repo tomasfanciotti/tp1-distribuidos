@@ -1,4 +1,4 @@
-from .rabbit_interface import *
+from .rabbit_interface import RabbitInterface
 from .messaging_protocol import *
 from .eof import EOF
 import time
@@ -7,7 +7,7 @@ from .server import ServerInterface
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level="info",
+    level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 
@@ -29,7 +29,7 @@ OP_CODE_QUERY1 = 7
 OP_CODE_RESPONSE_QUERY1 = 8
 OP_CODE_RESPONSE_QUERY2 = 9
 OP_CODE_RESPONSE_QUERY3 = 10
-OP_CODE_FINISH = 11
+OP_CODE_WAIT = 11
 OP_CODE_ERROR = 12
 OP_CODE_EOF = 13
 
@@ -203,5 +203,4 @@ class Analyzer(ServerInterface):
             rabbit.channel.basic_ack(method_frame.delivery_tag)
             return OP_CODE_RESPONSE_QUERY3, body
 
-
-        return OP_CODE_FINISH, "para wacha"
+        return OP_CODE_WAIT, "para wacha"

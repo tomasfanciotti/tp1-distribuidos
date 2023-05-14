@@ -6,7 +6,7 @@ import logging
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level="INFO",
+    level="DEBUG",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 
@@ -32,7 +32,7 @@ def load_config():
     return result
 
 
-def check_error(stage):
+def check_error(stage, notifier):
     error = False
 
     if stage not in config:
@@ -41,6 +41,10 @@ def check_error(stage):
     if stage not in listeners:
         logging.error(f'action: handle_eof | result: error | msg: no listeners for stage {stage}')
         error = True
+    else:
+        if notifier not in listeners[stage]:
+            logging.error(f'action: handle_eof | result: error | msg: notifier {notifier} is not listener of stage {stage}')
+            error = True
 
     return error
 
@@ -74,7 +78,7 @@ def handler(ch, method, properties, body):
         original = properties.headers.get("original")
         logging.info(f'action: handle_eof | result: in_progress | stage: {stage} | node: {notifier}')
 
-        if check_error(stage):
+        if check_error(stage, notifier):
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
