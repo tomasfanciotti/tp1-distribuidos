@@ -16,7 +16,7 @@ logging.getLogger("pika").setLevel(logging.WARNING)
 
 STAGE = "raw_weather_filter"
 NODE_ID = os.environ.get('HOSTNAME')
-print("Hostname: ", NODE_ID)
+logging.info(f"action: weather_filter | result: startup | node_id: {NODE_ID}")
 
 CITY_INDEX = 0
 DATE_INDEX = 1

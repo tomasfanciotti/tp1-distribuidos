@@ -3,6 +3,7 @@ from messaging_protocol import decode, encode  # module provided on the containe
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController
 import logging
+import os
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -14,7 +15,8 @@ logging.basicConfig(
 logging.getLogger("pika").setLevel(logging.WARNING)
 
 STAGE="prectot_filter"
-NODE_ID="1"
+NODE_ID = os.environ.get('HOSTNAME')
+logging.info(f"action: prectot_filter | result: startup | node_id: {NODE_ID}")
 
 DURATION_IDX = 4
 PRECTOT_IDX = 6

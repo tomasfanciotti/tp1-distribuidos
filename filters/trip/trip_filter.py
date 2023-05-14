@@ -3,6 +3,7 @@ from messaging_protocol import decode, encode  # module provided on the containe
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController
 import logging
+import os
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -14,7 +15,8 @@ logging.basicConfig(
 logging.getLogger("pika").setLevel(logging.WARNING)
 
 STAGE = "raw_trip_filter"
-NODE_ID = "1"
+NODE_ID = os.environ.get('HOSTNAME')
+logging.info(f"action: trip_filter | result: startup | node_id: {NODE_ID}")
 
 CITY_INDEX = 0
 START_DATE_INDEX = 1
@@ -24,6 +26,7 @@ END_STATION_INDEX = 4
 DURATION_INDEX = 5
 MEMBER_INDEX = 6
 YEAR_INDEX = 7
+
 
 def log_eof(ch, method, properties, body):
     logging.info(f"action: callback | result: success | msg: received EOF of trips - {body}")

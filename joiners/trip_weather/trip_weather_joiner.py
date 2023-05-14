@@ -1,4 +1,5 @@
 import logging
+import os
 # noinspection PyUnresolvedReferences
 from messaging_protocol import decode, encode       # module provided on the container
 # noinspection PyUnresolvedReferences
@@ -6,7 +7,7 @@ from eof_controller import EOFController
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level="DEBUG",
+    level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 
@@ -15,7 +16,8 @@ logging.getLogger("pika").setLevel(logging.WARNING)
 
 CONFIG_STAGE = "weather_joiner_config"
 JOIN_STAGE = "weather_join"
-NODE_ID = "1"
+NODE_ID = os.environ.get('HOSTNAME')
+logging.info(f"action: trip_weather_joiner | result: startup | node_id: {NODE_ID}")
 
 weather_info = {}
 
@@ -61,7 +63,7 @@ def joiner(ch, method, properties, body):
     trip = decode(body)
     logging.debug(f"action: join_callback | result: in_progress | msg: {trip} ")
 
-    trip_weather = ( trip[TRIP_CITY_INDEX], trip[START_DATE_INDEX].split(" ")[0])
+    trip_weather = (trip[TRIP_CITY_INDEX], trip[START_DATE_INDEX].split(" ")[0])
     if trip_weather not in weather_info:
         logging.warning(
             f"action: join_callback | result: warning | msg: No weather info found for trip started in {trip_weather}. Ignoring join..")
