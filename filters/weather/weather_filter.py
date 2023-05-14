@@ -1,9 +1,7 @@
 # noinspection PyUnresolvedReferences
 from messaging_protocol import decode, encode  # module provided on the container
 # noinspection PyUnresolvedReferences
-from rabbit_interface import RabbitInterface
-# noinspection PyUnresolvedReferences
-from eof import EOF, send_EOF, add_listener
+from eof_controller import EOFController
 import logging
 import os
 
@@ -25,6 +23,10 @@ DATE_INDEX = 1
 PRECTOT_INDEX = 2
 
 
+def log_eof(ch, method, properties, body):
+    logging.info(f"action: callback | result: success | msg: received EOF")
+
+
 def filter_weather(ch, method, properties, body):
     """
         input:  [ CITY, DATE, PRECTOT, QV2M, RH2M, PS, T2M_RANGE, TS, ... ]
@@ -33,12 +35,6 @@ def filter_weather(ch, method, properties, body):
 
     reg = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | body: {reg} ")
-
-    if EOF.is_eof(reg):
-        result, msg = send_EOF(STAGE, NODE_ID, properties, rabbit)
-        logging.info(f"action: eof | result: {result} | msg: {msg}")
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-        return
 
     filtered = [reg[CITY_INDEX], reg[DATE_INDEX], reg[PRECTOT_INDEX]]
 
@@ -49,12 +45,10 @@ def filter_weather(ch, method, properties, body):
     logging.info(f"action: filter_callback | result: success ")
 
 
-rabbit = RabbitInterface()
-
-logging.info(f"action: register_manager | result: in_progress ")
-add_listener(STAGE, NODE_ID, rabbit)
+rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)   # Instancia de RabbitInterface con un controller para el EOF
 
 logging.info(f"action: consuming | result: in_progress ")
 rabbit.consume_queue("raw_weather_data", filter_weather)
 
 logging.info(f"action: consuming | result: done ")
+rabbit.disconnect()

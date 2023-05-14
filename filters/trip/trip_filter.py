@@ -1,9 +1,7 @@
 # noinspection PyUnresolvedReferences
 from messaging_protocol import decode, encode  # module provided on the container
 # noinspection PyUnresolvedReferences
-from rabbit_interface import RabbitInterface  # module provided on the container
-# noinspection PyUnresolvedReferences
-from eof import EOF, send_EOF  # modules provided on the container
+from eof_controller import EOFController
 import logging
 
 logging.basicConfig(
@@ -27,6 +25,9 @@ DURATION_INDEX = 5
 MEMBER_INDEX = 6
 YEAR_INDEX = 7
 
+def log_eof(ch, method, properties, body):
+    logging.info(f"action: callback | result: success | msg: received EOF of trips - {body}")
+
 
 def filter_trip(ch, method, properties, body):
     """
@@ -36,12 +37,6 @@ def filter_trip(ch, method, properties, body):
 
     reg = decode(body)
     logging.debug(f"action: filter_callback | result: in_progress | body: {reg} ")
-
-    if EOF.is_eof(reg):
-        result, msg = send_EOF(STAGE, NODE_ID, properties, rabbit)
-        logging.info(f"action: eof | result: {result} | msg: {msg}")
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-        return
 
     if reg[DURATION_INDEX][1:].replace(".", "").isdigit():
 
@@ -62,12 +57,11 @@ def filter_trip(ch, method, properties, body):
     logging.debug(f"action: filter_callback | result: success.")
 
 
-rabbit = RabbitInterface()
-
-logging.info(f"action: register_manager | result: in_progress ")
-rabbit.publish_queue("EOF_queue", EOF.create_register(STAGE, NODE_ID).encode())
+rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
 
 logging.info(f"action: consuming | result: in_progress ")
 rabbit.consume_queue("raw_trip_data", filter_trip)
 
 logging.info(f"action: consuming | result: done ")
+
+rabbit.disconnect()

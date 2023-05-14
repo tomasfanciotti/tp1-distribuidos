@@ -63,7 +63,8 @@ filter = {
     "environment": ["PYTHONUNBUFFERED=1", "LOGGING_LEVEL=DEBUG"],
     "volumes": ["./server/common/messaging_protocol.py:/app/messaging_protocol.py",
                 "./server/common/rabbit_interface.py:/app/rabbit_interface.py",
-                "./server/common/eof.py:/app/eof.py"
+                "./server/common/eof.py:/app/eof.py",
+                "./server/common/eof_controller.py:/app/eof_controller.py"
                 ]
 }
 
