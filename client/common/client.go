@@ -19,7 +19,7 @@ const (
 	WEATHER_FILE     = "weather.csv"
 	STATION_FILE     = "station.csv"
 	TRIP_FILE        = "trip.csv"
-	FINISH_MESSAGE   = "FIN"
+	FINISH_MESSAGE   = "Queries termiandas"
 	EXPECTED_QUERIES = 3
 )
 

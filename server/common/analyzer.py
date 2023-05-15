@@ -1,7 +1,7 @@
 from .rabbit_interface import RabbitInterface
 from .messaging_protocol import *
 from .eof import EOF
-import time
+from .result import Result
 
 from .server import ServerInterface
 
@@ -45,11 +45,7 @@ class Analyzer(ServerInterface):
 
     def __init__(self):
         super().__init__()
-        self.readyness = {
-            "query1": False,
-            "query2": False,
-            "query3": False,
-        }
+        self.queries_ok = 0
 
     def handle_client(self, s):
 
@@ -210,39 +206,29 @@ class Analyzer(ServerInterface):
 
     def handle_querys(self, rabbit):
 
-        result = True
-        for ready in self.readyness.values():
-            result &= ready
+        msg = rabbit.get("query_results")
 
-        if result:
+        if not msg:
+            return OP_CODE_WAIT, "para wacha"
+
+        if EOF.is_eof(msg.decode()):
+            self.queries_ok += 1
+            if self.queries_ok < 3:
+                return OP_CODE_WAIT, "para wacha"
+
+            logging.info(f'action: get_query | result: success | msg: EOF {msg}')
             return OP_CODE_FINISH, FINISH_MESSAGE
 
-        if not self.readyness["query1"]:
-            msg = self.__handle_query("query1", "query1-pipe2", rabbit)
-            if msg:
-                return OP_CODE_RESPONSE_QUERY1, msg
+        result = Result.decode(msg)
 
-        if not self.readyness["query2"]:
-            msg = self.__handle_query("query2", "query2-pipe2", rabbit)
-            if msg:
-                return OP_CODE_RESPONSE_QUERY2, msg
+        if result.query == Result.QUERY_1:
+            return OP_CODE_RESPONSE_QUERY1, result.data
 
-        if not self.readyness["query3"]:
-            msg = self.__handle_query("query3", "query3-pipe4", rabbit)
-            if msg:
-                return OP_CODE_RESPONSE_QUERY3, msg
+        elif result.query == Result.QUERY_2:
+            return OP_CODE_RESPONSE_QUERY2, result.data
 
-        return OP_CODE_WAIT, "para wacha"
+        elif result.query == Result.QUERY_3:
+            return OP_CODE_RESPONSE_QUERY3, result.data
 
-    def __handle_query(self, query, pipe, rabbit):
-
-        method_frame, header_frame, body = rabbit.channel.basic_get(pipe)
-        if method_frame:
-            rabbit.channel.basic_ack(method_frame.delivery_tag)
-
-            logging.info(f'action: get_query | result: success | msg: {body}')
-
-            if EOF.is_eof(decode(body)):
-                self.readyness[query] = True
-            else:
-                return body
+        else:
+            logging.error(f'action: get_query | result: fail | query: {result.query} | result: {result.data}')

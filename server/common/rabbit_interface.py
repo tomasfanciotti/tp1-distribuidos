@@ -43,19 +43,20 @@ class RabbitInterface:
 
         # Pipeline 1 Queues
         self.channel.queue_declare(queue='query1-pipe1', durable=True)
-        self.channel.queue_declare(queue='query1-pipe2', durable=True)
+        # self.channel.queue_declare(queue='query1-pipe2', durable=True)
 
         # Pipeline 2 Queues
         self.channel.queue_declare(queue='query2-pipe1', durable=True)
-        self.channel.queue_declare(queue='query2-pipe2', durable=True)
+        # self.channel.queue_declare(queue='query2-pipe2', durable=True)
 
         # Pipeline 3 Queues
         self.channel.queue_declare(queue='query3-pipe1', durable=True)
         self.channel.queue_declare(queue='query3-pipe2', durable=True)
         self.channel.queue_declare(queue='query3-pipe3', durable=True)
-        self.channel.queue_declare(queue='query3-pipe4', durable=True)
+        # self.channel.queue_declare(queue='query3-pipe4', durable=True)
 
         self.channel.queue_declare(queue='EOF_queue', durable=True)
+        self.channel.queue_declare(queue='query_results', durable=True)
 
     def bind_topic(self, exchange, routing_key, dest='default'):
 
@@ -111,6 +112,15 @@ class RabbitInterface:
             queue=queue, on_message_callback=callback, auto_ack=auto_ack)
 
         self.channel.start_consuming()
+
+
+    def get(self, queue):
+
+        method_frame, header_frame, body = self.channel.basic_get(queue)
+        if method_frame:
+            self.channel.basic_ack(method_frame.delivery_tag)
+            return body
+
 
     def disconnect(self):
 

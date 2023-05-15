@@ -64,7 +64,8 @@ filter = {
     "volumes": ["./server/common/messaging_protocol.py:/app/messaging_protocol.py",
                 "./server/common/rabbit_interface.py:/app/rabbit_interface.py",
                 "./server/common/eof.py:/app/eof.py",
-                "./server/common/eof_controller.py:/app/eof_controller.py"
+                "./server/common/eof_controller.py:/app/eof_controller.py",
+                "./server/common/result.py:/app/result.py"
                 ]
 }
 
@@ -98,7 +99,7 @@ def generate(clients):
     services["weather_filter"]["entrypoint"] = "python3 /app/weather_filter.py"
     services["weather_filter"]["volumes"].append("./filters/weather/weather_filter.py:/app/weather_filter.py")
     services["weather_filter"]["deploy"] = {}
-    services["weather_filter"]["deploy"]["replicas"] = 2
+    services["weather_filter"]["deploy"]["replicas"] = 1
 
     services["station_filter"] = deepcopy(filter)
     services["station_filter"]["container_name"] = "station_filter"

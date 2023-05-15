@@ -2,6 +2,8 @@
 from messaging_protocol import decode, encode       # module provided on the container
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController           # module provided on the container
+# noinspection PyUnresolvedReferences
+from result import Result
 import logging
 import os
 
@@ -39,7 +41,8 @@ def filter_station(ch, method, properties, body):
     logging.debug(f"action: filter_callback | result: in_progress | body: {data} ")
 
     if float(data[AVERAGE_IDX]) > THRESHOLD:
-        rabbit.publish_queue('query3-pipe4', encode(data))
+        result = Result.query3(body)
+        rabbit.publish_queue('query_results', result.encode())
         status = "published"
     else:
         status = "ignored"

@@ -133,7 +133,12 @@
           "name": "query1-pipe1"
         }
       ],
-      "response": [ ]
+      "response": [
+        {
+          "type": "queue",
+          "name": "query_results"
+        }
+      ]
     },
     {
       "id": 4,
@@ -160,7 +165,12 @@
           "name": "query2-pipe1"
         }
       ],
-      "response": [ ]
+      "response": [
+        {
+          "type": "queue",
+          "name": "query_results"
+        }
+      ]
     },
     {
       "id": 5,
@@ -226,7 +236,7 @@
       "response": [
         {
           "type": "queue",
-          "name": "query3-pipe4"
+          "name": "query_results"
         }
       ]
     }

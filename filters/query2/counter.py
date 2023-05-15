@@ -2,6 +2,8 @@
 from messaging_protocol import decode, encode
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController           # module provided on the container
+# noinspection PyUnresolvedReferences
+from result import Result
 import logging
 import os
 
@@ -63,8 +65,9 @@ def filter_results(ch, method, properties, body):
         trips_2017 = status[station]['2017']
 
         if 2 * trips_2016 < trips_2017:
-            result = [station[0], station[1], str(trips_2016), str(trips_2017)]
-            rabbit.publish_queue("query2-pipe2", encode(result))
+            data = [station[0], station[1], str(trips_2016), str(trips_2017)]
+            result = Result.query2(encode(data))
+            rabbit.publish_queue("query_results", result.encode())
             logging.info(
                 f"action: response_enqueue | result: success | city SELECETED: {station[0]} | station: {station[1]} "
                 f"| 2016: {trips_2016} | 2017: {trips_2017} ")

@@ -2,6 +2,8 @@
 from messaging_protocol import decode, encode  # module provided on the container
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController
+# noinspection PyUnresolvedReferences
+from result import Result
 import logging
 import os
 
@@ -34,9 +36,10 @@ def avg(ch, method, properties, body):
 
     else:
 
-        result = str(round(status["duration_sum"] / status["trips"], 4))
-        rabbit.publish_queue("query1-pipe2", encode(result))
-        logging.info(f"action: response_enqueue | result: success | result: {result} | trips: {status['trips']}")
+        data = str(round(status["duration_sum"] / status["trips"], 4))
+        result = Result.query1(data)
+        rabbit.publish_queue("query_results", result.encode())
+        logging.info(f"action: response_enqueue | result: success | {result} | trips: {status['trips']}")
 
         # Reset Status
         status["trips"] = 0
