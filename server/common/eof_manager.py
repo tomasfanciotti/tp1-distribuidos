@@ -100,15 +100,15 @@ def handler(ch, method, properties, body):
         all_eof = True
         for node in listeners[stage]:
             for src in listeners[stage][node]:
-                print(node, src, flush=True)
                 all_eof &= listeners[stage][node][src]["EOF"]
 
         if all_eof:
             publish_eof_to_next_stage(stage, rabbit)
         else:
+
             idx = list(map(lambda x: x["name"], config[stage]["source"])).index(source)
             if config[stage]["source"][idx]["type"] == "queue" and original == "true":
-                notify_eof(stage, notifier, source)
+                notify_eof(stage, notifier, idx)
 
         logging.info(f'action: handle_eof | result: in_progress | stage_ready: {all_eof}')
 
@@ -140,12 +140,12 @@ def publish_eof_to_next_stage(stage_name, rabbit: RabbitInterface):
             return
 
 
-def notify_eof(stage, notifier, source):
+def notify_eof(stage, notifier, source_idx):
 
     for node in listeners[stage]:
         logging.debug(f'action: pushing EOF | result: in_progress | stage: {stage} | node: {node}')
         if node == notifier: continue
-        rabbit.publish_queue(config[stage]["source"][source]["name"], EOF(stage, "manager").encode(), headers={"original": False})
+        rabbit.publish_queue(config[stage]["source"][source_idx]["name"], EOF(stage, "manager").encode(), headers={"original": False})
         logging.debug(f'action: handle_eof | result: in_progress | msg: forwarding EOF to {node}')
 
 

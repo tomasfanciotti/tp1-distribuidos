@@ -29,20 +29,27 @@ OP_CODE_QUERY1 = 7
 OP_CODE_RESPONSE_QUERY1 = 8
 OP_CODE_RESPONSE_QUERY2 = 9
 OP_CODE_RESPONSE_QUERY3 = 10
-OP_CODE_WAIT = 11
-OP_CODE_ERROR = 12
-OP_CODE_EOF = 13
+OP_CODE_FINISH = 11
+OP_CODE_WAIT = 12
+OP_CODE_ERROR = 13
+OP_CODE_EOF = 14
 
-# Wait for rabbitmq to come up
-time.sleep(10)
+FINISH_MESSAGE = "Queries termiandas"
 
 WEATHER_FIELDS = 22
 STATION_FIELDS = 7
 TRIPS_FIELDS = 9
 
 
-
 class Analyzer(ServerInterface):
+
+    def __init__(self):
+        super().__init__()
+        self.readyness = {
+            "query1": False,
+            "query2": False,
+            "query3": False,
+        }
 
     def handle_client(self, s):
 
@@ -101,7 +108,17 @@ class Analyzer(ServerInterface):
             elif packet.opcode == OP_CODE_QUERY1:
 
                 data = packet.get()
-                opcode, result = self.handle_querys(rabbit)
+                try:
+                    logging.info(f'action: handle_queries | result: starting')
+                    opcode, result = self.handle_querys(rabbit)
+                except Exception as e:
+                    opcode, result = OP_CODE_WAIT, "para wacaha"
+                    logging.error(
+                        f'action: handle_queries | result: fail | msg: {e}')
+                finally:
+                    logging.info(
+                        f'action: handle_queries | result: finished')
+
                 if opcode is None or result is None:
                     send(s, Packet.new(OP_CODE_ERROR, "No seras muy fantaseosa vos?"))
                     logging.error(
@@ -126,16 +143,16 @@ class Analyzer(ServerInterface):
         eof = EOF("start", "server")
 
         if archivo == "weathers":
-            eof.channel = "raw_weather_data"
-            rabbit.publish_queue("raw_weather_data", eof.encode(), headers={"original":"true"})
+            eof.source = "raw_weather_data"
+            rabbit.publish_queue("raw_weather_data", eof.encode(), headers={"original": "true"})
 
         elif archivo == "stations":
-            eof.channel = "raw_station_data"
-            rabbit.publish_queue("raw_station_data", eof.encode(), headers={"original":"true"})
+            eof.source = "raw_station_data"
+            rabbit.publish_queue("raw_station_data", eof.encode(), headers={"original": "true"})
 
         elif archivo == "trips":
-            eof.channel = "raw_trip_data"
-            rabbit.publish_queue("raw_trip_data", eof.encode(), headers={"original":"true"})
+            eof.source = "raw_trip_data"
+            rabbit.publish_queue("raw_trip_data", eof.encode(), headers={"original": "true"})
         else:
             return
 
@@ -180,7 +197,6 @@ class Analyzer(ServerInterface):
         batch_size = int(data.pop(0))
 
         try:
-
             for i in range(batch_size):
                 reg = data[i * TRIPS_FIELDS + 1:(i + 1) * TRIPS_FIELDS]
                 rabbit.publish_queue("raw_trip_data", encode(reg))
@@ -194,19 +210,39 @@ class Analyzer(ServerInterface):
 
     def handle_querys(self, rabbit):
 
-        method_frame, header_frame, body = rabbit.channel.basic_get('query1-pipe2')
-        if method_frame:
-            rabbit.channel.basic_ack(method_frame.delivery_tag)
-            return OP_CODE_RESPONSE_QUERY1, body
+        result = True
+        for ready in self.readyness.values():
+            result &= ready
 
-        method_frame, header_frame, body = rabbit.channel.basic_get('query2-pipe2')
-        if method_frame:
-            rabbit.channel.basic_ack(method_frame.delivery_tag)
-            return OP_CODE_RESPONSE_QUERY2, body
+        if result:
+            return OP_CODE_FINISH, FINISH_MESSAGE
 
-        method_frame, header_frame, body = rabbit.channel.basic_get('query3-pipe4')
-        if method_frame:
-            rabbit.channel.basic_ack(method_frame.delivery_tag)
-            return OP_CODE_RESPONSE_QUERY3, body
+        if not self.readyness["query1"]:
+            msg = self.__handle_query("query1", "query1-pipe2", rabbit)
+            if msg:
+                return OP_CODE_RESPONSE_QUERY1, msg
+
+        if not self.readyness["query2"]:
+            msg = self.__handle_query("query2", "query2-pipe2", rabbit)
+            if msg:
+                return OP_CODE_RESPONSE_QUERY2, msg
+
+        if not self.readyness["query3"]:
+            msg = self.__handle_query("query3", "query3-pipe4", rabbit)
+            if msg:
+                return OP_CODE_RESPONSE_QUERY3, msg
 
         return OP_CODE_WAIT, "para wacha"
+
+    def __handle_query(self, query, pipe, rabbit):
+
+        method_frame, header_frame, body = rabbit.channel.basic_get(pipe)
+        if method_frame:
+            rabbit.channel.basic_ack(method_frame.delivery_tag)
+
+            logging.info(f'action: get_query | result: success | msg: {body}')
+
+            if EOF.is_eof(decode(body)):
+                self.readyness[query] = True
+            else:
+                return body

@@ -287,8 +287,7 @@ func (c *Client) Start() {
 
 	c.analyzer.SendEOF("trips")
 
-	responses := 0
-	for responses < EXPECTED_QUERIES && c.running {
+	for c.running {
 
 		result, err := c.analyzer.GetQueries()
 		if err != nil {
@@ -301,7 +300,6 @@ func (c *Client) Start() {
 
 		} else if result != "" {
 			log.Infof("action: query_request | result: success | msg: %v", result)
-			responses += 1
 
 		} else {
 			log.Infof("action: query_request | result: fail | msg: no queries ready, waiting..")

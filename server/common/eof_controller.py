@@ -46,7 +46,7 @@ class EOFController(RabbitInterface):
         if EOF.is_eof(decode(msg)):
 
             src = method.exchange + method.routing_key
-            original = prop.headers.get("orgiginal") if prop.headers else "false"
+            original = prop.headers.get("original") if prop.headers else "false"
 
             self.send_EOF(src, original)
             if self.stop_on_eof:

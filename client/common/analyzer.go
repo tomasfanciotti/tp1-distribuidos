@@ -20,8 +20,9 @@ const (
 	OP_CODE_RESPONSE_QUERY2 = 9
 	OP_CODE_RESPONSE_QUERY3 = 10
 	OP_CODE_FINISH          = 11
-	OP_CODE_ERROR           = 12
-	OP_CODE_EOF             = 13
+	OP_CODE_WAIT            = 12
+	OP_CODE_ERROR           = 13
+	OP_CODE_EOF             = 14
 )
 
 // Bike Rides Analyzer Interface
@@ -166,7 +167,11 @@ func (bra *BikeRidesAnalyzer) GetQueries() (string, error) {
 		return "Query 3: " + string(packet_response.data), nil
 
 	} else if packet_response.opcode == OP_CODE_FINISH {
+		return string(packet_response.data), nil
+
+	} else if packet_response.opcode == OP_CODE_WAIT {
 		return "", nil
+
 	}
 
 	return "", errors.New("opcode does not recognized: " + string(rune(packet_response.opcode)))

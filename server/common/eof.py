@@ -7,7 +7,7 @@ class EOF:
     OP_CODE_EOF = 1
     OP_CODE_REGISTER = 2
 
-    def __init__(self, stage, node, source= None):
+    def __init__(self, stage, node, source=None):
         """ Generates a EOF struct with specified stage and node """
 
         self.opcode = self.OP_CODE_EOF
