@@ -14,7 +14,7 @@ logging.basicConfig(
 logging.getLogger("pika").setLevel(logging.WARNING)
 
 CONFIG_FILE = "config_manager.json"
-
+EOF_MANAGER_QUEUE = "EOF_queue"
 
 def load_config():
     result = {}
@@ -33,24 +33,33 @@ def load_config():
     return result
 
 
-def check_error(stage, notifier):
+def check_error(stage, notifier, source):
     error = False
 
     if stage not in config:
-        logging.error(f'action: handle_eof | result: error | msg: no config for stage {stage}')
+        logging.error(f'action: checking | result: error | msg: no config for stage {stage}')
         error = True
+    else:
+        if source not in map(lambda x: x["name"], config[stage]["source"]):
+            logging.error(f'action: checking | result: error | msg: no source "{source}" for stage "{stage}"')
+            error = True
+
     if stage not in listeners:
-        logging.error(f'action: handle_eof | result: error | msg: no listeners for stage {stage}')
+        logging.error(f'action: checking | result: error | msg: no listeners for stage "{stage}"')
         error = True
     else:
         if notifier not in listeners[stage]:
-            logging.error(f'action: handle_eof | result: error | msg: notifier {notifier} is not listener of stage {stage}')
+            logging.error(f'action: checking | result: error | msg: notifier "{notifier}" is not listener of stage "{stage}"')
+            error = True
+        if source not in listeners[stage][notifier]:
+            logging.error(f'action: checking | result: error | msg: no source "{source}" set for listener "{notifier}" in stage "{stage}"')
             error = True
 
     return error
 
 
 def handler(ch, method, properties, body):
+
     msg = decode(body)
     logging.info(f'action: handle_msg | result: in_progress | msg: {msg}')
 
@@ -60,40 +69,46 @@ def handler(ch, method, properties, body):
     if EOF.is_reg(msg):
 
         stage, node = params[0], params[1]
-        if not stage in listeners:
+        if stage not in listeners:
             listeners[stage] = {}
 
         if node not in listeners[stage]:
-            # logging.info(f'action: handle_opcode | result: warning | client: {addr[0]} | msg: overwrited setup for node {node} in stage {stage}.')
-            listeners[stage][node] = {"EOF": False}
+            listeners[stage][node] = {}
+
+            for src in config[stage]["source"]:
+                stc_name = src["name"]
+                listeners[stage][node][stc_name] = {"EOF": False}
         else:
             logging.info(
-                f'action: handle_register | result: warning | msg: node {node} already suscribed in stage {stage}')
+                f'action: handle_register | result: warning | msg: node "{node}" already suscribed in stage "{stage}"')
 
         logging.info(f'action: handle_register | result: success | client: {node} | stage: {stage}')
         logging.debug(f'action: handle_register | result: success | stage: {stage} | listeners: {listeners[stage]}')
 
     elif EOF.is_eof(msg):
 
-        stage, notifier = params
+        stage, notifier, source = params
         original = properties.headers.get("original")
-        logging.info(f'action: handle_eof | result: in_progress | stage: {stage} | node: {notifier}')
+        logging.info(f'action: handle_eof | result: in_progress | stage: {stage} | node: {notifier} | source: {source}')
 
-        if check_error(stage, notifier):
+        if check_error(stage, notifier, source):
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
-        listeners[stage][notifier]["EOF"] = True
+        listeners[stage][notifier][source]["EOF"] = True
 
         all_eof = True
-        for data in listeners[stage].values():
-            all_eof &= data["EOF"]
+        for node in listeners[stage]:
+            for src in listeners[stage][node]:
+                print(node, src, flush=True)
+                all_eof &= listeners[stage][node][src]["EOF"]
 
         if all_eof:
             publish_eof_to_next_stage(stage, rabbit)
         else:
-            if config[stage]["source"]["type"] == "queue" and original == "true":
-                notify_eof(stage, notifier)
+            idx = list(map(lambda x: x["name"], config[stage]["source"])).index(source)
+            if config[stage]["source"][idx]["type"] == "queue" and original == "true":
+                notify_eof(stage, notifier, source)
 
         logging.info(f'action: handle_eof | result: in_progress | stage_ready: {all_eof}')
 
@@ -110,7 +125,7 @@ def publish_eof_to_next_stage(stage_name, rabbit: RabbitInterface):
 
         response_type = response_config["type"]
         output_name = response_config["name"]
-        eof = EOF(stage_name, "manager").encode()
+        eof = EOF(stage_name, "manager", output_name).encode()
 
         if response_type == "topic":
             rabbit.publish_topic(output_name, eof, headers={"original": True})
@@ -125,12 +140,12 @@ def publish_eof_to_next_stage(stage_name, rabbit: RabbitInterface):
             return
 
 
-def notify_eof(stage, notifier):
+def notify_eof(stage, notifier, source):
 
     for node in listeners[stage]:
         logging.debug(f'action: pushing EOF | result: in_progress | stage: {stage} | node: {node}')
         if node == notifier: continue
-        rabbit.publish_queue(config[stage]["source"]["name"], EOF(stage, "manager").encode(), headers={"original": False})
+        rabbit.publish_queue(config[stage]["source"][source]["name"], EOF(stage, "manager").encode(), headers={"original": False})
         logging.debug(f'action: handle_eof | result: in_progress | msg: forwarding EOF to {node}')
 
 

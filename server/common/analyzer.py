@@ -123,13 +123,19 @@ class Analyzer(ServerInterface):
 
     def sendEOF(self, archivo, rabbit: RabbitInterface):
 
-        eof = EOF("start", "server").encode()
+        eof = EOF("start", "server")
+
         if archivo == "weathers":
-            rabbit.publish_queue("raw_weather_data", eof, headers={"original":"true"})
+            eof.channel = "raw_weather_data"
+            rabbit.publish_queue("raw_weather_data", eof.encode(), headers={"original":"true"})
+
         elif archivo == "stations":
-            rabbit.publish_queue("raw_station_data", eof, headers={"original":"true"})
+            eof.channel = "raw_station_data"
+            rabbit.publish_queue("raw_station_data", eof.encode(), headers={"original":"true"})
+
         elif archivo == "trips":
-            rabbit.publish_queue("raw_trip_data", eof, headers={"original":"true"})
+            eof.channel = "raw_trip_data"
+            rabbit.publish_queue("raw_trip_data", eof.encode(), headers={"original":"true"})
         else:
             return
 

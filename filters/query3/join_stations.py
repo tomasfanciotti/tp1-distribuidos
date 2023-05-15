@@ -1,14 +1,23 @@
 # noinspection PyUnresolvedReferences
 from messaging_protocol import decode, encode  # module provided on the container
 # noinspection PyUnresolvedReferences
-from rabbit_interface import RabbitInterface    # module provided on the container
+from eof_controller import EOFController           # module provided on the container
 import logging
+import os
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level="INFO",
+    level="DEBUG",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
+
+# reduce pika log level
+logging.getLogger("pika").setLevel(logging.WARNING)
+
+STAGE = "q3-join"
+NODE_ID = os.environ.get('HOSTNAME')
+logging.info(f"action: join_stations | result: startup | node_id: {NODE_ID}")
+
 
 SOURCES = ['trip-start-station-topic', 'trip-end-station-topic']
 
@@ -20,10 +29,12 @@ STATION_IDX = 6
 LATITUDE_IDX = 7
 LONGITUDE_IDX = 8
 
-EOF = "#"
-
 status = {}
 topic_EOF = set()
+
+
+def log_eof(ch, method, properties, body):
+    logging.info(f"action: callback | result: success | msg: received EOF - {body}")
 
 
 def callback(ch, method, properties, body):
@@ -35,13 +46,6 @@ def callback(ch, method, properties, body):
 
     trip = decode(body)
     logging.debug(f"action: callback | result: in_progress | from: {method.exchange} | body: {trip} ")
-
-    if trip == EOF:
-        topic_EOF.add(method.exchange)
-        if len(topic_EOF) >= len(SOURCES):
-            logging.info(f"action: callback | result: done | msg: END OF FILE trips.")
-            rabbit.publish_queue('query3-pipe1', encode(trip))
-        return
 
     if trip[CITY_IDX] != TARGET:
         logging.warning(f"action: callback | result: done | msg: trip from other city instead of {TARGET}")
@@ -73,7 +77,7 @@ def callback(ch, method, properties, body):
         logging.debug(f"action: callback | result: success | msg: sotored en status and waiting for next station")
 
 
-rabbit = RabbitInterface()
+rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
 rabbit.bind_topic("trip-start-station-topic", "")
 rabbit.bind_topic("trip-end-station-topic", "")
 

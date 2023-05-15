@@ -1,15 +1,22 @@
 # noinspection PyUnresolvedReferences
 from messaging_protocol import decode, encode
 # noinspection PyUnresolvedReferences
-from rabbit_interface import RabbitInterface    # module provided on the container
+from eof_controller import EOFController           # module provided on the container
 import logging
+import os
 from haversine import haversine
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level="INFO",
+    level="DEBUG",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
+# reduce pika log level
+logging.getLogger("pika").setLevel(logging.WARNING)
+
+STAGE = "q3-distance"
+NODE_ID = os.environ.get('HOSTNAME')
+logging.info(f"action: distance | result: startup | node_id: {NODE_ID}")
 
 TARGET = "montreal"
 
@@ -19,7 +26,10 @@ START_LATITUDE_IDX = 2
 START_LONGITUDE_IDX = 3
 END_LATITUDE_IDX = 4
 END_LONGITUDE_IDX = 5
-EOF = "#"
+
+
+def log_eof(ch, method, properties, body):
+    logging.info(f"action: callback | result: success | msg: received EOF - {body}")
 
 
 def callback(ch, method, properties, body):
@@ -30,12 +40,6 @@ def callback(ch, method, properties, body):
 
     trip = decode(body)
     logging.debug(f"action: filter_callback | result: in_progress | body: {trip} ")
-
-    if trip == EOF:
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-        logging.info(f"action: filter_callback | result: done | Received EOF ")
-        rabbit.publish_queue('query3-pipe2', encode(EOF))
-        return
 
     if trip[CITY_IDX] != TARGET:
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -53,7 +57,7 @@ def callback(ch, method, properties, body):
     logging.debug(f"action: filter_callback | result: success | msg: published => {filtered} ")
 
 
-rabbit = RabbitInterface()
+rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
 
 logging.info(f"action: consuming | result: in_progress ")
 rabbit.consume_queue("query3-pipe1", callback)

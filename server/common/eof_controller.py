@@ -13,6 +13,7 @@ class EOFController(RabbitInterface):
         self.callback_on_eof = on_eof
         self.stage = stage
         self.node = node
+        self.callback = None
 
         # Add node to manager
         self.publish_queue(EOF_MANAGER_QUEUE, EOF.create_register(stage, node).encode())
@@ -23,22 +24,14 @@ class EOFController(RabbitInterface):
         # Add node to manager
         self.publish_queue(EOF_MANAGER_QUEUE, EOF.create_register(stage, self.node).encode())
 
-    def set_on_eof(self, callback, stop=False ):
+    def set_on_eof(self, callback, stop=False):
         self.callback_on_eof = callback
         self.stop_on_eof = stop
 
-    def send_EOF(self, properties):
+    def send_EOF(self, src, original):
 
-        if properties.headers is None:
-            result, msg = "fail", "no encabzado detectado"
-        else:
-            original = properties.headers['original']
-            self.publish_queue(EOF_MANAGER_QUEUE, EOF(self.stage, self.node).encode(),
-                               headers={"original": original})
-
-            result, msg = "success", "END OF FILE trip"
-
-        return result, msg
+        self.publish_queue(EOF_MANAGER_QUEUE, EOF(self.stage, self.node, src).encode(),
+                           headers={"original": original})
 
     def consume_queue(self, queue, callback, auto_ack=False):
         self.callback = callback
@@ -52,7 +45,10 @@ class EOFController(RabbitInterface):
 
         if EOF.is_eof(decode(msg)):
 
-            self.send_EOF(prop)
+            src = method.exchange + method.routing_key
+            original = prop.headers.get("orgiginal") if prop.headers else "false"
+
+            self.send_EOF(src, original)
             if self.stop_on_eof:
                 ch.stop_consuming()
             if self.callback_on_eof:
