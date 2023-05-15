@@ -2,6 +2,8 @@
 from messaging_protocol import decode, encode
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController           # module provided on the container
+# noinspection PyUnresolvedReferences
+from batching import Batching
 import logging
 import os
 from haversine import haversine
@@ -29,6 +31,7 @@ END_LONGITUDE_IDX = 5
 
 
 def log_eof(ch, method, properties, body):
+    batching.push_buffer()
     logging.info(f"action: callback | result: success | msg: received EOF - {body}")
 
 
@@ -52,14 +55,14 @@ def callback(ch, method, properties, body):
 
     filtered = [trip[CITY_IDX], trip[STATION_NAME_IDX], str(distance)]
 
-    rabbit.publish_queue('query3-pipe2', encode(filtered))
-    ch.basic_ack(delivery_tag=method.delivery_tag)
+    batching.publish_batch_to_queue('query3-pipe2', encode(filtered))
     logging.debug(f"action: filter_callback | result: success | msg: published => {filtered} ")
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
+batching = Batching(rabbit)
 
 logging.info(f"action: consuming | result: in_progress ")
-rabbit.consume_queue("query3-pipe1", callback)
+batching.consume_batch_queue("query3-pipe1", callback)
 
 logging.info(f"action: consuming | result: done")

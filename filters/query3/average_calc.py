@@ -2,6 +2,8 @@
 from messaging_protocol import decode, encode       # module provided on the container
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController           # module provided on the container
+# noinspection PyUnresolvedReferences
+from batching import Batching
 import logging
 import os
 
@@ -40,11 +42,13 @@ def avg(ch, method, properties, body):
         result = str(round(status[station]["distance_sum"] / status[station]["trips"], 4))
         response = [station[0], station[1], result]
 
-        rabbit.publish_queue("query3-pipe3", encode(response))
+        batching.publish_batch_to_queue("query3-pipe3", encode(response))
         logging.debug(
             f"action: average_calc | result: in_progress | city: {station[0]} | station: {station[1]} | average: {result}")
 
     status.clear()
+    batching.push_buffer()
+    logging.info(f"action: average_calc | result: done ")
 
 
 def callback(ch, method, properties, body):
@@ -64,16 +68,16 @@ def callback(ch, method, properties, body):
     status[key]["trips"] += 1
     status[key]["distance_sum"] += float(trip[DISTANCE_IDX])
 
-    ch.basic_ack(delivery_tag=method.delivery_tag)
     logging.debug(
         f"action: callback | result: success | trips: {status[key]['trips']} | distance_sum : { status[key]['distance_sum']}.")
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=avg)
+batching = Batching(rabbit)
 
 logging.info(f"action: average_calc | result: in_progress | msg: start consuming from queue: query3-pipe2")
 
-rabbit.consume_queue("query3-pipe2", callback)
+batching.consume_batch_queue("query3-pipe2", callback)
 
 logging.info(
     f"action: average_calc | result: done ")

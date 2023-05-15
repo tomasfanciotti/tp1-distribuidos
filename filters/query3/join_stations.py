@@ -2,6 +2,8 @@
 from messaging_protocol import decode, encode  # module provided on the container
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController           # module provided on the container
+# noinspection PyUnresolvedReferences
+from batching import Batching
 import logging
 import os
 
@@ -34,6 +36,7 @@ topic_EOF = set()
 
 
 def log_eof(ch, method, properties, body):
+    batching.push_buffer()
     logging.info(f"action: callback | result: success | msg: received EOF - {body}")
 
 
@@ -69,7 +72,7 @@ def callback(ch, method, properties, body):
                   start_data[LATITUDE_IDX], start_data[LONGITUDE_IDX],
                   end_data[LATITUDE_IDX], end_data[LONGITUDE_IDX]]
 
-        rabbit.publish_queue('query3-pipe1', encode(output))
+        batching.publish_batch_to_queue('query3-pipe1', encode(output))
         del status[trip_id]
         logging.debug(f"action: callback | result: success | msg: joined and published => {output}")
 
@@ -81,8 +84,9 @@ rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
 rabbit.bind_topic("trip-start-station-topic", "")
 rabbit.bind_topic("trip-end-station-topic", "")
 
-logging.info(f"action: consuming trips | result: in_progress ")
-rabbit.consume_topic(callback)
+batching = Batching(rabbit)
 
-logging.info(
-    f"action: join_station | result: success ")
+logging.info(f"action: consuming trips | result: in_progress ")
+batching.consume_batch_topic(callback)
+
+logging.info(f"action: join_station | result: success ")

@@ -4,6 +4,8 @@ from messaging_protocol import decode, encode       # module provided on the con
 from eof_controller import EOFController           # module provided on the container
 # noinspection PyUnresolvedReferences
 from result import Result
+# noinspection PyUnresolvedReferences
+from batching import Batching
 import logging
 import os
 
@@ -50,13 +52,13 @@ def filter_station(ch, method, properties, body):
     logging.debug(f"action: callback | result: in_progress | station: {data[STATION_IDX]} | average: {data[AVERAGE_IDX]} "
                  f"| status: {status} ")
 
-    ch.basic_ack(delivery_tag=method.delivery_tag)
     logging.debug(f"action: callback | result: success ")
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
+batching = Batching(rabbit)
 
 logging.info(f"consuming query3-pipe3 | result: in_progress ")
-rabbit.consume_queue("query3-pipe3", filter_station)
+batching.consume_batch_queue("query3-pipe3", filter_station)
 
 logging.info(f"action: consuming | result: done")

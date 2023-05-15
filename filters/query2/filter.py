@@ -2,6 +2,8 @@
 from messaging_protocol import decode, encode       # module provided on the container
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController           # module provided on the container
+# noinspection PyUnresolvedReferences
+from batching import Batching
 import logging
 import os
 
@@ -28,6 +30,7 @@ STATION_NAME_IDX = 6
 
 
 def log_eof(ch, method, properties, body):
+    batching.push_buffer()
     logging.info(f"action: callback | result: success | msg: received EOF - {body}")
 
 
@@ -45,15 +48,16 @@ def callback(ch, method, properties, body):
         return
 
     filtered = [trip[CITY_IDX], trip[STATION_NAME_IDX], trip[YEAR_IDX]]
-    rabbit.publish_queue("query2-pipe1", encode(filtered))
+    batching.publish_batch_to_queue("query2-pipe1", encode(filtered))
     logging.debug(f"action: filter_callback | result: success | msg: published trip filtered {filtered}")
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
 rabbit.bind_topic("trip-start-station-topic", "")
+batching = Batching(rabbit)
 
 logging.info(f"action: consuming trip-start-stations | result: in_progress ")
-rabbit.consume_topic(callback)
+batching.consume_batch_topic(callback)
 
 logging.info(f"action: consuming trip-start-stations| result: done ")
 rabbit.disconnected()

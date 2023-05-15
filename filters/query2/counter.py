@@ -4,6 +4,8 @@ from messaging_protocol import decode, encode
 from eof_controller import EOFController           # module provided on the container
 # noinspection PyUnresolvedReferences
 from result import Result
+# noinspection PyUnresolvedReferences
+from batching import Batching
 import logging
 import os
 
@@ -45,12 +47,10 @@ def callback(ch, method, properties, body):
 
     if year not in status[station]:
         logging.warning(f"action: filter_callback | result: warning | msg: invalid YEAR ID. Ignoring.. ")
-        ch.basic_ack(delivery_tag=method.delivery_tag)
         return
 
     status[station][year] += 1
 
-    ch.basic_ack(delivery_tag=method.delivery_tag)
     logging.debug(
         f"action: filter_callback | result: success | key: {station}, {year} | counter : {status[station][year]} ")
 
@@ -81,9 +81,10 @@ def filter_results(ch, method, properties, body):
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=filter_results)
+batching = Batching(rabbit)
 
 logging.info(f"action: consuming | result: in_progress ")
-rabbit.consume_queue("query2-pipe1", callback)
+batching.consume_batch_queue("query2-pipe1", callback)
 
 logging.info(f"action: consuming | result: done")
 
