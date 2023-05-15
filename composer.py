@@ -65,7 +65,8 @@ filter = {
                 "./server/common/rabbit_interface.py:/app/rabbit_interface.py",
                 "./server/common/eof.py:/app/eof.py",
                 "./server/common/eof_controller.py:/app/eof_controller.py",
-                "./server/common/result.py:/app/result.py"
+                "./server/common/result.py:/app/result.py",
+                "./server/common/batching.py:/app/batching.py"
                 ]
 }
 

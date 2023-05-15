@@ -2,6 +2,8 @@
 from messaging_protocol import decode, encode  # module provided on the container
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController
+# noinspection PyUnresolvedReferences
+from batching import Batching
 import logging
 import os
 
@@ -24,6 +26,7 @@ PRECTOT_IDX = 6
 PRECTOT_TRESHOLD = 1
 
 def log_eof(ch, method, properties, body):
+    batching.push_buffer()
     logging.info(f"action: callback | result: success | msg: received EOF of trips - {body}")
 
 
@@ -36,7 +39,7 @@ def callback(ch, method, properties, body):
     logging.debug(f"action: filter_callback | result: in_progress | body: {trip}")
 
     if float(trip[PRECTOT_IDX]) > PRECTOT_TRESHOLD:
-        rabbit.publish_queue('query1-pipe1', encode([trip[DURATION_IDX]]))
+        batching.publish_batch_to_queue('query1-pipe1', encode([trip[DURATION_IDX]]))
         logging.debug(f"action: filter_callback | result: success | msg: condition met. Sending to the next stage.")
     else:
         logging.debug(f"action: filter_callback | result: success | msg: trip filtered.")
@@ -46,7 +49,8 @@ rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
 rabbit.bind_topic("trip-weather-topic", "")
 
 logging.info(f"action: consuming trip-weathers | result: in_progress ")
-rabbit.consume_topic(callback)
+batching = Batching(rabbit)
+batching.consume_batch_topic(callback)
 
 logging.info(f"action: consuming trip-weathers | result: done ")
 rabbit.disconnect()

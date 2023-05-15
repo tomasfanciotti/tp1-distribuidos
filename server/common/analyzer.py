@@ -45,7 +45,7 @@ class Analyzer(ServerInterface):
 
     def __init__(self):
         super().__init__()
-        self.queries_ok = 0
+        self.queries_ok = set()
 
     def handle_client(self, s):
 
@@ -212,10 +212,12 @@ class Analyzer(ServerInterface):
             return OP_CODE_WAIT, "para wacha"
 
         if EOF.is_eof(msg.decode()):
-            self.queries_ok += 1
-            if self.queries_ok < 3:
+            stage_ok = msg.decode().split(".")[1]
+            self.queries_ok.add(stage_ok)
+            if len(self.queries_ok) < 3:
                 return OP_CODE_WAIT, "para wacha"
 
+            self.queries_ok.clear()
             logging.info(f'action: get_query | result: success | msg: EOF {msg}')
             return OP_CODE_FINISH, FINISH_MESSAGE
 

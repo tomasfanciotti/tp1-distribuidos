@@ -4,6 +4,9 @@ from messaging_protocol import decode, encode  # module provided on the containe
 from eof_controller import EOFController
 # noinspection PyUnresolvedReferences
 from result import Result
+# noinspection PyUnresolvedReferences
+from batching import Batching
+
 import logging
 import os
 
@@ -26,6 +29,8 @@ status = {"trips": 0,
 
 
 def avg(ch, method, properties, body):
+
+    batching.push_buffer()
 
     logging.info(f"action: callback | result: success | msg: received EOF of trips - {body}")
 
@@ -57,7 +62,6 @@ def callback(ch, method, properties, body):
     status["trips"] += 1
     status["duration_sum"] += float(trip[DURATION_INDEX])
 
-    ch.basic_ack(delivery_tag=method.delivery_tag)
     logging.debug(
         f"action: filter_callback | result: success | trips: {status['trips']} | duration_sum : {status['duration_sum']} ")
 
@@ -65,7 +69,9 @@ def callback(ch, method, properties, body):
 rabbit = EOFController(STAGE, NODE_ID, on_eof=avg)
 
 logging.info(f"action: consuming trip-weathers | result: in_progress ")
-rabbit.consume_queue("query1-pipe1", callback)
+
+batching = Batching(rabbit)
+batching.consume_batch_queue("query1-pipe1", callback)
 
 logging.info(f"action: consuming trip-weathers | result: done")
 
