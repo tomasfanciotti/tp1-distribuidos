@@ -13,7 +13,7 @@ MAX_PACKET_SIZE = 8192
 def encode(data):
 
     if type(data) == int:
-        return str(int).encode()
+        return str(data).encode()
 
     if type(data) == str:
         return data.encode()
@@ -59,7 +59,7 @@ class ErrorPacket(Packet):
     def __init__(self, msg: str):
         super().__init__()
         self.opcode = -1
-        self.data = bytes(msg)
+        self.data = msg.encode()
 
 
 # Upper Layer
@@ -85,8 +85,8 @@ def receive(s: socket):
     except ReadZeroException:
         return Packet.new(0,"")
 
-    opcode = int.from_bytes(read_bytes[:OP_CODE_BYTES], ENDIANNES)
-    data_lenght = int.from_bytes(read_bytes[OP_CODE_BYTES:], ENDIANNES)
+    opcode = int.from_bytes(read_bytes[:OP_CODE_BYTES], byteorder=ENDIANNES)
+    data_lenght = int.from_bytes(read_bytes[OP_CODE_BYTES:], byteorder=ENDIANNES)
 
     # Receive data
     data = b""
@@ -98,6 +98,7 @@ def receive(s: socket):
             read_bytes = __receive(s, to_read)
 
         except (ShortReadException, ReadZeroException):
+            logging.error(f'action: receive | se interpretó un ShortReadException o ReadZeroException, posible deadlock')
             return ErrorPacket("Short read. Cadena de bytes invalida")
 
         data += read_bytes
@@ -120,7 +121,8 @@ def send(s: socket, packet: Packet):
         i, offset = i + offset, min(packet.data_lenght - total_sent, MAX_PACKET_SIZE)
         try:
             sent_bytes = __send(s, packet.data[i: i + offset])
-        except ShortWriteException:
+        except ShortWriteException as e:
+            logging.error(f'action: send | se interpretó un ShortWrite, posible deadlock')
             return False
 
         total_sent += sent_bytes
@@ -130,28 +132,28 @@ def send(s: socket, packet: Packet):
 # Lower Layer
 
 def __receive(s: socket, total_bytes: int):
-    buffer = b''
-    actual_read = b''
 
-    while len(buffer) < total_bytes:
+    #logging.debug(f'bout to read')
 
-        actual_read += s.recv(total_bytes - len(buffer))
-        buffer += actual_read
+    data = b""
+    total_received = 0
 
-        # No mandaron nada
-        if len(buffer) == 0:
-            raise ReadZeroException()
+    # Recepción de los datos
+    while total_received < total_bytes:
+        to_receive = min(total_bytes - total_received, MAX_PACKET_SIZE)
+        chunk = s.recv(to_receive)
+        if len(chunk) == 0:
+            raise ReadZeroException()  # No se recibió ningún dato, posible cierre de conexión
+        data += chunk
+        total_received += len(chunk)
 
-        # Mandaron la mitad
-        if len(actual_read) == 0:
-            raise ShortReadException()
-
-    logging.debug(f'action: __receive | buffer: {buffer}')
-    return buffer
+    #logging.debug(f'action: __receive ')
+    logging.debug(f'readed {len(data)}/{total_bytes}')
+    return data
 
 
 def __send(s: socket, buffer: bytes):
-    logging.debug(f'action: __send | buffer: {buffer}')
+    #logging.debug(f'action: __send | buffer: {buffer}')
     sent = 0
     while sent < len(buffer):
 
@@ -161,4 +163,5 @@ def __send(s: socket, buffer: bytes):
         if actual_sent == 0:
             raise ShortWriteException()
 
+    logging.debug(f'writed {sent}/{len(buffer)}')
     return sent
