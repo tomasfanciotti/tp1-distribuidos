@@ -6,6 +6,7 @@ class Batching:
         self.rabbit = rabbit
         self.buffer = {"topics": {}, "queues": {}}
         self.callback = None
+        self.auto_ack = False
 
     def publish_batch_to_topic(self, topic, msg, routing_key="", headers=None):
 
@@ -48,16 +49,19 @@ class Batching:
     def push_buffer(self):
 
         for t, r, h in self.buffer["topics"]:
-            encoded = b"%".join(self.buffer["queues"][(t, r, h)])
+            encoded = b"%".join(self.buffer["topics"][(t, r, h)])
             if len(encoded):
                 self.rabbit.publish_topic(t, encoded, r, h)
-            print(f"Flushing to topic {t}: {len(self.buffer['queues'][(t, r, h)])} messages")
+                self.buffer["topics"][(t, r, h)].clear()
+            print(f"Flushing to topic {t}: {len(self.buffer['topics'][(t, r, h)])} messages")
 
         for q, h in self.buffer["queues"]:
 
             encoded = b"%".join(self.buffer["queues"][(q, h)])
             if len(encoded):
                 self.rabbit.publish_queue(q, encoded, h)
+                self.buffer["queues"][(q, h)].clear()
+
             print(f"Flushing to queue {q}: {len(self.buffer['queues'][(q, h)])} messages")
 
     def consume_batch_queue(self, queue, callback, auto_ack=False):
