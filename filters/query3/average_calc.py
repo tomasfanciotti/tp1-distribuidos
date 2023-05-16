@@ -79,5 +79,6 @@ logging.info(f"action: average_calc | result: in_progress | msg: start consuming
 
 batching.consume_batch_queue("query3-pipe2", callback)
 
+rabbit.disconnect()
 logging.info(
     f"action: average_calc | result: done ")

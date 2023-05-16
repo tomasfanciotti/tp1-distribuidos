@@ -65,4 +65,5 @@ batching = Batching(rabbit)
 logging.info(f"action: consuming | result: in_progress ")
 batching.consume_batch_queue("query3-pipe1", callback)
 
+rabbit.disconnect()
 logging.info(f"action: consuming | result: done")

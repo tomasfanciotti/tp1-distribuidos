@@ -89,4 +89,5 @@ batching = Batching(rabbit)
 logging.info(f"action: consuming trips | result: in_progress ")
 batching.consume_batch_topic(callback)
 
+rabbit.disconnect()
 logging.info(f"action: join_station | result: success ")

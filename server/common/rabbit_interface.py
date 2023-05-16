@@ -138,7 +138,7 @@ class RabbitInterface:
 
     def disconnect(self):
 
-        for q in self.annon_q:
-            self.channel.queue_delete(queue=q)
+        for name in self.annon_q:
+            self.channel.queue_delete(queue=self.annon_q[name])
 
         self.conn.close()

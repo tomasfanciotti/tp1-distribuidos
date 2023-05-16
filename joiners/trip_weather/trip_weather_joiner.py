@@ -97,4 +97,5 @@ rabbit.set_on_eof(log_eof, stop=False)
 logging.info(f"action: consuming trips | result: in_progress ")
 batching.consume_batch_topic(joiner, dest="trips")
 
+rabbit.disconnect()
 logging.info(f"action: consuming trips | result: done ")

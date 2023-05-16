@@ -60,4 +60,4 @@ logging.info(f"action: consuming trip-start-stations | result: in_progress ")
 batching.consume_batch_topic(callback)
 
 logging.info(f"action: consuming trip-start-stations| result: done ")
-rabbit.disconnected()
+rabbit.disconnect()
