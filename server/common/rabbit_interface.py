@@ -1,5 +1,6 @@
 import time
 import pika
+import signal
 
 
 class RabbitInterface:
@@ -15,6 +16,8 @@ class RabbitInterface:
             except:
                 time.sleep(7)
 
+        signal.signal(signal.SIGTERM, self.__stop_listening)
+        self.running = True
         self.annon_q = {}
         self.init()
 
@@ -82,6 +85,8 @@ class RabbitInterface:
 
     def publish_topic(self, topic, msg, routing_key="", headers=None):
 
+        if not self.running: return
+
         if headers is not None:
             self.channel.basic_publish(exchange=topic,
                                        routing_key=routing_key,
@@ -92,12 +97,16 @@ class RabbitInterface:
 
     def consume_topic(self, callback, dest='default', auto_ack=False):
 
+        if not self.running: return
+
         self.channel.basic_consume(
             queue=self.annon_q[dest], on_message_callback=callback, auto_ack=auto_ack)
 
         self.channel.start_consuming()
 
     def publish_queue(self, queue, msg, headers=None):
+
+        if not self.running: return
 
         if headers is not None:
             self.channel.basic_publish(exchange="",
@@ -108,11 +117,13 @@ class RabbitInterface:
             self.channel.basic_publish(exchange="", routing_key=queue, body=msg)
 
     def consume_queue(self, queue, callback, auto_ack=False):
+
+        if not self.running: return
+
         self.channel.basic_consume(
             queue=queue, on_message_callback=callback, auto_ack=auto_ack)
 
         self.channel.start_consuming()
-
 
     def get(self, queue):
 
@@ -121,6 +132,9 @@ class RabbitInterface:
             self.channel.basic_ack(method_frame.delivery_tag)
             return body
 
+    def __stop_listening(self, *args):
+        self.running = False
+        self.channel.stop_consuming()
 
     def disconnect(self):
 
