@@ -132,6 +132,7 @@ class Analyzer(ServerInterface):
                 logging.info(f'action: disconnected | result: success | ip: {addr[0]}')
                 break
 
+        self.queries_ok.clear()
         rabbit.disconnect()
 
     def sendEOF(self, archivo, rabbit: RabbitInterface):
@@ -217,7 +218,6 @@ class Analyzer(ServerInterface):
             if len(self.queries_ok) < 3:
                 return OP_CODE_WAIT, "para wacha"
 
-            self.queries_ok.clear()
             logging.info(f'action: get_query | result: success | msg: EOF {msg}')
             return OP_CODE_FINISH, FINISH_MESSAGE
 

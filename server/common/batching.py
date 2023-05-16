@@ -51,14 +51,15 @@ class Batching:
         for t, r, h in self.buffer["topics"]:
             encoded = b"%".join(self.buffer["topics"][(t, r, h)])
             if len(encoded):
+                print(f"Flushing to topic {t}: {len(self.buffer['topics'][(t, r, h)])} messages")
                 self.rabbit.publish_topic(t, encoded, r, h)
                 self.buffer["topics"][(t, r, h)].clear()
-            print(f"Flushing to topic {t}: {len(self.buffer['topics'][(t, r, h)])} messages")
 
         for q, h in self.buffer["queues"]:
 
             encoded = b"%".join(self.buffer["queues"][(q, h)])
             if len(encoded):
+                print(f"Flushing to queue {q}: {len(self.buffer['queues'][(q, h)])} messages")
                 self.rabbit.publish_queue(q, encoded, h)
                 self.buffer["queues"][(q, h)].clear()
 

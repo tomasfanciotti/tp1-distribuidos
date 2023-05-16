@@ -2,12 +2,14 @@
 from messaging_protocol import decode, encode  # module provided on the container
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController
+# noinspection PyUnresolvedReferences
+from batching import Batching
 import logging
 import os
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level="INFO",
+    level="DEBUG",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 

@@ -4,10 +4,12 @@ import os
 from messaging_protocol import decode, encode  # module provided on the container
 # noinspection PyUnresolvedReferences
 from eof_controller import EOFController
+# noinspection PyUnresolvedReferences
+from batching import Batching
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level="INFO",
+    level="DEBUG",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 
@@ -34,6 +36,7 @@ station_info = {}
 
 
 def log_eof(ch, method, properties, body):
+    batching.push_buffer()
     logging.info(f"action: callback | result: success | msg: received EOF - {body}")
 
 
@@ -84,14 +87,14 @@ def joiner(ch, method, properties, body):
     joined = trip + station
     logging.debug(f"action: join_callback | result: in_progress | msg: trip and START station joined -> {joined} ")
 
-    rabbit.publish_topic("trip-start-station-topic", encode(joined))
+    batching.publish_batch_to_topic("trip-start-station-topic", encode(joined))
     logging.debug(f"action: join_callback | result: success | msg: published join in topic")
 
     station = station_info[trip_end_station]
     joined = trip + station
     logging.debug(f"action: join_callback | result: in_progress | msg: trip and END station joined -> {joined} ")
 
-    rabbit.publish_topic("trip-end-station-topic", encode(joined))
+    batching.publish_batch_to_topic("trip-end-station-topic", encode(joined))
     logging.debug(f"action: join_callback | result: success | msg: published join in topic")
 
 
@@ -99,14 +102,16 @@ rabbit = EOFController(CONFIG_STAGE, NODE_ID, on_eof=log_eof, stop_on_eof=True)
 rabbit.bind_topic("station_topic", "", dest="stations")
 rabbit.bind_topic("trip_topic", "", dest="trips")
 
+batching = Batching(rabbit)
+
 logging.info(f"action: consuming stations | result: in_progress ")
-rabbit.consume_topic(config_station, dest="stations" )
+batching.consume_batch_topic(config_station, dest="stations" )
 
 rabbit.set_stage(JOIN_STAGE)
 rabbit.set_on_eof(log_eof, stop=False)
 
 logging.info(f"action: consuming trips | result: in_progress ")
-rabbit.consume_topic(joiner, dest="trips")
+batching.consume_batch_topic(joiner, dest="trips")
 
 logging.info(f"action: consuming trips | result: done ")
 
