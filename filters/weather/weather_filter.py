@@ -9,7 +9,7 @@ import os
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level="DEBUG",
+    level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 
@@ -26,7 +26,8 @@ PRECTOT_INDEX = 2
 
 
 def log_eof(ch, method, properties, body):
-    logging.info(f"action: callback | result: success | msg: received EOF")
+    batching.push_buffer()
+    logging.info(f"action: callback | result: success | msg: received EOF -> {body}")
 
 
 def filter_weather(ch, method, properties, body):
@@ -40,17 +41,17 @@ def filter_weather(ch, method, properties, body):
 
     filtered = [reg[CITY_INDEX], reg[DATE_INDEX], reg[PRECTOT_INDEX]]
 
-    rabbit.publish_topic("weather_topic", encode(filtered))
+    batching.publish_batch_to_topic("weather_topic", encode(filtered))
     logging.info(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
 
-    ch.basic_ack(delivery_tag=method.delivery_tag)
     logging.info(f"action: filter_callback | result: success ")
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)   # Instancia de RabbitInterface con un controller para el EOF
+batching = Batching(rabbit)
 
 logging.info(f"action: consuming | result: in_progress ")
-rabbit.consume_queue("raw_weather_data", filter_weather)
+batching.consume_batch_queue("raw_weather_data", filter_weather)
 
 logging.info(f"action: consuming | result: done ")
 rabbit.disconnect()

@@ -39,12 +39,10 @@ class Batching:
         # Send if size met condition
         if len(self.buffer["queues"][key]) >= Batching.BATCH_SIZE:
 
-            print(f"Pushing: {len(self.buffer['queues'][key])} messages")
-
             encoded = b"%".join(self.buffer["queues"][key])
             self.rabbit.publish_queue(queue, encoded, headers)
             self.buffer["queues"][key] = []
-            print(encoded)
+
 
     def push_buffer(self):
 
@@ -62,8 +60,6 @@ class Batching:
                 print(f"Flushing to queue {q}: {len(self.buffer['queues'][(q, h)])} messages")
                 self.rabbit.publish_queue(q, encoded, h)
                 self.buffer["queues"][(q, h)].clear()
-
-            print(f"Flushing to queue {q}: {len(self.buffer['queues'][(q, h)])} messages")
 
     def consume_batch_queue(self, queue, callback, auto_ack=False):
         self.callback = callback

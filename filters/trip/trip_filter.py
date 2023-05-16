@@ -9,7 +9,7 @@ import os
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
-    level="DEBUG",
+    level="INFO",
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 
@@ -31,6 +31,7 @@ YEAR_INDEX = 7
 
 
 def log_eof(ch, method, properties, body):
+    batching.push_buffer()
     logging.info(f"action: callback | result: success | msg: received EOF of trips - {body}")
 
 
@@ -52,20 +53,20 @@ def filter_trip(ch, method, properties, body):
                     reg[DURATION_INDEX],
                     reg[YEAR_INDEX]]
 
-        rabbit.publish_topic("trip_topic", encode(filtered))
+        batching.publish_batch_to_topic("trip_topic", encode(filtered))
 
         logging.debug(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
     else:
         logging.error(f"action: filter_callback | result: fail | ignored due type error | data: {reg} ")
 
-    ch.basic_ack(delivery_tag=method.delivery_tag)
     logging.debug(f"action: filter_callback | result: success.")
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
+batching = Batching(rabbit)
 
 logging.info(f"action: consuming | result: in_progress ")
-rabbit.consume_queue("raw_trip_data", filter_trip)
+batching.consume_batch_queue("raw_trip_data", filter_trip)
 
 logging.info(f"action: consuming | result: done ")
 
