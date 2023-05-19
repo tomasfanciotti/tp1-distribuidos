@@ -11,9 +11,9 @@ class EOF:
         """ Generates a EOF struct with specified stage and node """
 
         self.opcode = self.OP_CODE_EOF
-        self.stage = stage
-        self.node = node
-        self.source = source
+        self.stage_id = stage
+        self.node_id = node
+        self.source_id = source
 
     @classmethod
     def create_register(cls, stage, node):
@@ -56,4 +56,4 @@ class EOF:
     def encode(self):
         """ Encodes a EOF struct to be sent to rabbit """
 
-        return f"{self.opcode}.{self.stage}.{self.node}.{self.source}".encode()
+        return f"{self.opcode}.{self.stage_id}.{self.node_id}.{self.source_id}".encode()

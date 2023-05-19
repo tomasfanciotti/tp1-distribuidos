@@ -6,6 +6,11 @@ EOF_MANAGER_QUEUE = "EOF_queue"
 
 
 class EOFController(RabbitInterface):
+    """ Module with the same functions of a RabbitInterface that it adds the logic
+     needed to receive EOFs, detect and forward them to EOFManager.
+
+     Also, this controller ensures the registration in the EOFManager so he can know that exists"""
+
 
     def __init__(self, stage, node, on_eof=None, stop_on_eof=False):
         super().__init__()
@@ -29,6 +34,7 @@ class EOFController(RabbitInterface):
         self.stop_on_eof = stop
 
     def send_EOF(self, src, original):
+        """ Send a EOF to the EOFManager"""
 
         self.publish_queue(EOF_MANAGER_QUEUE, EOF(self.stage, self.node, src).encode(),
                            headers={"original": original})
@@ -44,6 +50,10 @@ class EOFController(RabbitInterface):
         super().consume_topic(self.__callback, dest, auto_ack)
 
     def __callback(self, ch, method, prop, msg):
+        """ Callback used to process the incoming messages that checks if the message is a EOF or not.
+        In case of EOF, executes the configured tasks by the user and sends EOF to Manager.
+        Otherwise executes the original user's callback
+        """
 
         if EOF.is_eof(decode(msg)):
 
@@ -60,50 +70,3 @@ class EOFController(RabbitInterface):
                 ch.basic_ack(delivery_tag=method.delivery_tag)
         else:
             self.callback(ch, method, prop, msg)
-
-
-"""
-    def publish_batch_to_topic(self, topic, msg, routing_key="", headers=None):
-
-        key = (topic, routing_key, headers)
-
-        # Check if exists
-        if key not in self.buffer["topics"]:
-            self.buffer["topics"][key] = []
-
-        # Append
-        self.buffer["topics"][key].append(msg)
-
-        # Send if size met condition
-        if len(self.buffer["topics"][key]) > EOFController.BATCH_SIZE:
-            encoded = b"%".join(self.buffer["topics"][key])
-            self.publish_topic(topic, encoded, routing_key, headers)
-            self.buffer["topics"][key] = []
-
-    def publish_batch_to_queue(self, queue, msg, headers=None):
-
-        key = (queue, headers)
-
-        # Check if exists
-        if key not in self.buffer["queues"]:
-            self.buffer["queues"][key] = []
-
-        # Append
-        self.buffer["queues"][key].append(msg)
-
-        # Send if size met condition
-        if len(self.buffer["queues"][key]) > EOFController.BATCH_SIZE:
-            encoded = b"%".join(self.buffer["queues"][key])
-            self.publish_queue(queue, encoded, headers)
-            self.buffer["queues"][key] = []
-
-    def __push_buffer(self):
-
-        for t, r, h in self.buffer["topics"]:
-            encoded = b"%".join(self.buffer["queues"][(t, r, h)])
-            self.publish_topic(t, encoded, r, h)
-
-        for q, h in self.buffer["queues"]:
-            encoded = b"%".join(self.buffer["queues"][(q, h)])
-            self.publish_topic(q, encoded, h)
-"""

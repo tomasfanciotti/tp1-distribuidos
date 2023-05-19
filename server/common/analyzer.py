@@ -25,7 +25,7 @@ OP_CODE_INGEST_WEATHER = 3
 OP_CODE_INGEST_STATIONS = 4
 OP_CODE_INGEST_TRIPS = 5
 OP_CODE_ACK = 6
-OP_CODE_QUERY1 = 7
+OP_CODE_QUERY = 7
 OP_CODE_RESPONSE_QUERY1 = 8
 OP_CODE_RESPONSE_QUERY2 = 9
 OP_CODE_RESPONSE_QUERY3 = 10
@@ -42,12 +42,19 @@ TRIPS_FIELDS = 9
 
 
 class Analyzer(ServerInterface):
+    """ Interface of the system that exposes the methods avaibles by the clients """
 
     def __init__(self):
         super().__init__()
         self.queries_ok = set()
 
     def handle_client(self, s):
+        """ Handle a new client
+
+        It waits for a command and data, process an action and responses to the client,
+        indefinitely until the conection ends.
+
+        """
 
         rabbit = RabbitInterface()
 
@@ -65,7 +72,7 @@ class Analyzer(ServerInterface):
             elif packet.opcode == OP_CODE_INGEST_WEATHER:
 
                 data = packet.get()
-                result = self.handle_wheather(data, rabbit)
+                result = self.ingest_weather(data, rabbit)
                 if not result:
                     send(s, Packet.new(OP_CODE_ERROR, "There was a problem handling weathers"))
                     logging.error(
@@ -78,7 +85,7 @@ class Analyzer(ServerInterface):
             elif packet.opcode == OP_CODE_INGEST_STATIONS:
 
                 data = packet.get()
-                result = self.handle_stations(data, rabbit)
+                result = self.ingest_stations(data, rabbit)
                 if not result:
                     send(s, Packet.new(OP_CODE_ERROR, "There was a problem handling stations"))
                     logging.error(
@@ -91,7 +98,7 @@ class Analyzer(ServerInterface):
             elif packet.opcode == OP_CODE_INGEST_TRIPS:
 
                 data = packet.get()
-                result = self.handle_trips(data, rabbit)
+                result = self.ingest_trips(data, rabbit)
                 if not result:
                     send(s, Packet.new(OP_CODE_ERROR, "There was a problem handling trips"))
                     logging.error(
@@ -101,12 +108,12 @@ class Analyzer(ServerInterface):
                     logging.info(
                         f'action: ingest_strips | result: success | client: {addr[0]} | msg: trips ingested correctly.')
 
-            elif packet.opcode == OP_CODE_QUERY1:
+            elif packet.opcode == OP_CODE_QUERY:
 
                 data = packet.get()
                 try:
                     logging.info(f'action: handle_queries | result: starting')
-                    opcode, result = self.handle_querys(rabbit)
+                    opcode, result = self.get_query_results(rabbit)
                 except Exception as e:
                     opcode, result = OP_CODE_WAIT, "para wacaha"
                     logging.error(
@@ -136,26 +143,28 @@ class Analyzer(ServerInterface):
         rabbit.disconnect()
 
     def sendEOF(self, archivo, rabbit: RabbitInterface):
+        """ Sends a EOF msg of the specified file ingestion """
 
         eof = EOF("start", "server")
 
         if archivo == "weathers":
-            eof.source = "raw_weather_data"
+            eof.source_id = "raw_weather_data"
             rabbit.publish_queue("raw_weather_data", eof.encode(), headers={"original": "true"})
 
         elif archivo == "stations":
-            eof.source = "raw_station_data"
+            eof.source_id = "raw_station_data"
             rabbit.publish_queue("raw_station_data", eof.encode(), headers={"original": "true"})
 
         elif archivo == "trips":
-            eof.source = "raw_trip_data"
+            eof.source_id = "raw_trip_data"
             rabbit.publish_queue("raw_trip_data", eof.encode(), headers={"original": "true"})
         else:
             return
 
         logging.info(f'action: sending EOF | result: success | file: {archivo}')
 
-    def handle_wheather(self, data, rabbit: RabbitInterface):
+    def ingest_weather(self, data, rabbit: RabbitInterface):
+        """ Ingest the weather information """
 
         # Cantidad de weathers
         batch_size = int(data.pop(0))
@@ -172,7 +181,8 @@ class Analyzer(ServerInterface):
 
         return True
 
-    def handle_stations(self, data, rabbit: RabbitInterface):
+    def ingest_stations(self, data, rabbit: RabbitInterface):
+        """ Ingest the stations information """
 
         batch_size = int(data.pop(0))
 
@@ -189,7 +199,8 @@ class Analyzer(ServerInterface):
 
         return True
 
-    def handle_trips(self, data, rabbit: RabbitInterface):
+    def ingest_trips(self, data, rabbit: RabbitInterface):
+        """ Ingest the trips data """
 
         batch_size = int(data.pop(0))
 
@@ -205,7 +216,10 @@ class Analyzer(ServerInterface):
 
         return True
 
-    def handle_querys(self, rabbit):
+    def get_query_results(self, rabbit):
+        """ Checks if exist results of any query and forward them to the client.
+            If there is no results in the queue, the client is notified with an OP_CODE_WAIT
+        """
 
         msg = rabbit.get("query_results")
 

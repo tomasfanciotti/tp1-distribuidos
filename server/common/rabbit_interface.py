@@ -4,6 +4,12 @@ import signal
 
 
 class RabbitInterface:
+    """ Middleware that contains the configuration and comunication with RabbitMQ using Pika.
+
+    - Defines the main methods to publish and consume of a queue or topics.
+    - Allows to bind several annonymous queues to an one or more exchanges.
+    - Handle the setup and releasing of resources.
+    """
 
     def __init__(self):
 
@@ -28,6 +34,7 @@ class RabbitInterface:
         return connection
 
     def init(self):
+        """ Defines the queues and exchanges that the system will need"""
 
         # Data exchanges
         self.channel.exchange_declare(exchange='weather_topic', exchange_type='fanout')
@@ -62,6 +69,7 @@ class RabbitInterface:
         self.channel.queue_declare(queue='query_results', durable=True)
 
     def bind_topic(self, exchange, routing_key, dest='default'):
+        """ Binding of a exchange with a specific destination queue """
 
         if dest not in self.annon_q:
             self.annon_q[dest] = self.channel.queue_declare(queue='', durable=True).method.queue
@@ -84,6 +92,7 @@ class RabbitInterface:
                 self.channel.queue_bind(self.annon_q[dest], exchange=ex, routing_key=routing_key[ex])
 
     def publish_topic(self, topic, msg, routing_key="", headers=None):
+        """ Publish a message to the specified topic with custom routing keys or headers"""
 
         if not self.running: return
 
@@ -96,6 +105,7 @@ class RabbitInterface:
             self.channel.basic_publish(exchange=topic, routing_key=routing_key, body=msg)
 
     def consume_topic(self, callback, dest='default', auto_ack=False):
+        """ Consume messages of a topic selecting the destination queue to read """
 
         if not self.running: return
 
@@ -105,6 +115,7 @@ class RabbitInterface:
         self.channel.start_consuming()
 
     def publish_queue(self, queue, msg, headers=None):
+        """ Publish a message to the specified queue with custom headers"""
 
         if not self.running: return
 
@@ -117,6 +128,7 @@ class RabbitInterface:
             self.channel.basic_publish(exchange="", routing_key=queue, body=msg)
 
     def consume_queue(self, queue, callback, auto_ack=False):
+        """ Consume messages of a specific topic """
 
         if not self.running: return
 
@@ -126,6 +138,7 @@ class RabbitInterface:
         self.channel.start_consuming()
 
     def get(self, queue):
+        """ Get a message if the queue is not empty, otherwise will return none"""
 
         method_frame, header_frame, body = self.channel.basic_get(queue)
         if method_frame:
@@ -133,10 +146,13 @@ class RabbitInterface:
             return body
 
     def __stop_listening(self, *args):
+        """ Gracefully shutdown """
+
         self.running = False
         self.channel.stop_consuming()
 
     def disconnect(self):
+        """ Release owned resources and disconnect the session """
 
         for name in self.annon_q:
             self.channel.queue_delete(queue=self.annon_q[name])

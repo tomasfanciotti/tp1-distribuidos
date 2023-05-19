@@ -1,4 +1,7 @@
 class Batching:
+    """ Batching is a class that uses a RabbitInterface to send and recevive batches of data.
+     It has a buffer by each topic/queue and flushes to the original destination when the BATCH_SIZE has
+     reached or when the sender decides to do it"""
 
     BATCH_SIZE = 10
 
@@ -9,6 +12,8 @@ class Batching:
         self.auto_ack = False
 
     def publish_batch_to_topic(self, topic, msg, routing_key="", headers=None):
+        """ Store the msg to the buffer and sends it to the specified topic when
+         len(buffer) reaches the limit. """
 
         key = (topic, routing_key, headers)
 
@@ -26,6 +31,8 @@ class Batching:
             self.buffer["topics"][key] = []
 
     def publish_batch_to_queue(self, queue, msg, headers=None):
+        """ Store the msg to the buffer and sends it to the specified queue when
+         len(buffer) reaches the limit. """
 
         key = (queue, headers)
 
@@ -45,6 +52,7 @@ class Batching:
 
 
     def push_buffer(self):
+        """ Sends all batches to its respective topic/queue. Empties all buffers"""
 
         for t, r, h in self.buffer["topics"]:
             encoded = b"%".join(self.buffer["topics"][(t, r, h)])
@@ -62,19 +70,25 @@ class Batching:
                 self.buffer["queues"][(q, h)].clear()
 
     def consume_batch_queue(self, queue, callback, auto_ack=False):
+        """ Consume a batch recieved by a queue using __Callback """
+
         self.callback = callback
         self.auto_ack = auto_ack
         self.rabbit.consume_queue(queue, self.__callback, auto_ack)
 
     def consume_batch_topic(self, callback, dest='default', auto_ack=False):
+        """ Consume a batch recieved by a topic using __Callback """
+
         self.callback = callback
         self.auto_ack = auto_ack
         self.rabbit.consume_topic(self.__callback, dest, auto_ack)
 
     def __callback(self, ch, method, prop, msg):
+        """ Split the message (batch) by the delimitor and proccess all sub-messages with
+        the callback specified by the user """
 
         if self.callback is None:
-            print("Flaco tenes un problemita")
+            print("No callback was provided.. Ignoring")
 
         for x in msg.split(b'%'):
             self.callback(ch, method, prop, x)

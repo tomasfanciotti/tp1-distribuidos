@@ -6,12 +6,18 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 class ServerInterface:
+    """ Class that contains the business flows.
+
+    This class has a main method invoqued by the server on each new incoming connection. """
 
     def handle_client(self, s: socket.socket):
         pass
 
 
 class Server:
+    """ Server class responsible of open the listening socket at the configured port and receive new clients
+    to handle the using a ServerInterface"""
+
     def __init__(self, port, listen_backlog, iface: ServerInterface):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -27,14 +33,13 @@ class Server:
 
     def run(self):
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            while self.listening:
-                try:
-                    client_sock = self.__accept_new_connection()
-                    executor.submit(self.__handle_client_connection, client_sock)
+        while self.listening:
+            try:
+                client_sock = self.__accept_new_connection()
+                self.__handle_client_connection(client_sock)
 
-                except OSError as e:
-                    logging.error(f"action: accept_connections | result: fail | error: {e}")
+            except OSError as e:
+                logging.error(f"action: accept_connections | result: fail | error: {e}")
 
         logging.info(f"action: run | result: finished | msg: server shutting down ")
 

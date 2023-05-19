@@ -112,6 +112,7 @@ func batchDataProcessor(c *Client, fileName string, handler func(*Client, []Batc
 	batch := []BatchUnitData{}
 	total_inputs := 0
 	result := true
+	header := true
 
 	for scanner.Scan() {
 
@@ -120,11 +121,18 @@ func batchDataProcessor(c *Client, fileName string, handler func(*Client, []Batc
 			return 0, false
 		}
 
+		if header {
+			header = false
+			continue
+		}
+
 		campos := strings.Split(strings.TrimRight(scanner.Text(), "\n"), ",")
 
 		if len(campos) != expected_fields {
 			log.Infof("action: scan_batch_file | result: warning | msg: line fields does not match with a expected register. Found: %v in { %v }  ignoring..", len(campos), campos)
 			continue
+		} else if batchType == "WEATHER" && city == "montreal" {
+			campos = campos[:len(campos)-1]
 		}
 
 		campos = append([]string{city}, campos...)
