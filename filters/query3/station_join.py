@@ -58,7 +58,7 @@ def callback(ch, method, properties, body):
     source = method.exchange
     if trip_id not in status:
         status[trip_id] = {}
-        logging.info(f"action: callback | result: in_progress | msg: new trip in satus.")
+        logging.debug(f"action: callback | result: in_progress | msg: new trip in satus.")
 
     if source not in status[trip_id]:
         status[trip_id][source] = trip
@@ -81,13 +81,13 @@ def callback(ch, method, properties, body):
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
-rabbit.bind_topic("trip-start-station-topic", "")
-rabbit.bind_topic("trip-end-station-topic", "")
+rabbit.bind_topic("trip-start-station-topic", dest="query3-collector")
+rabbit.bind_topic("trip-end-station-topic", dest="query3-collector")
 
 batching = Batching(rabbit)
 
 logging.info(f"action: consuming trips | result: in_progress ")
-batching.consume_batch_topic(callback)
+batching.consume_batch_topic(callback,dest="query3-collector")
 
 rabbit.disconnect()
 logging.info(f"action: join_station | result: success ")

@@ -53,11 +53,11 @@ def callback(ch, method, properties, body):
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
-rabbit.bind_topic("trip-start-station-topic", "")
+rabbit.bind_topic("trip-start-station-topic", dest="query2-collector")
 batching = Batching(rabbit)
 
 logging.info(f"action: consuming trip-start-stations | result: in_progress ")
-batching.consume_batch_topic(callback)
+batching.consume_batch_topic(callback, dest="query2-collector")
 
 logging.info(f"action: consuming trip-start-stations| result: done ")
 rabbit.disconnect()

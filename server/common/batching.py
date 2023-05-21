@@ -3,7 +3,7 @@ class Batching:
      It has a buffer by each topic/queue and flushes to the original destination when the BATCH_SIZE has
      reached or when the sender decides to do it"""
 
-    BATCH_SIZE = 10
+    BATCH_SIZE = 50
 
     def __init__(self, rabbit):
         self.rabbit = rabbit

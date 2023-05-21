@@ -15,10 +15,10 @@ import (
 
 const (
 	WAITING_PERIOD   = 4
-	MAX_BATCH_SIZE   = 1000
+	MAX_BATCH_SIZE   = 500
 	WEATHER_FILE     = "weather.csv"
-	STATION_FILE     = "station.csv"
-	TRIP_FILE        = "trip.csv"
+	STATION_FILE     = "stations.csv"
+	TRIP_FILE        = "trips.csv"
 	FINISH_MESSAGE   = "Queries termiandas"
 	EXPECTED_QUERIES = 3
 )
@@ -113,6 +113,7 @@ func batchDataProcessor(c *Client, fileName string, handler func(*Client, []Batc
 	total_inputs := 0
 	result := true
 	header := true
+    log.Debugf("action: scan_batch_file | batchtype: %v | city: %v", batchType, city)
 
 	for scanner.Scan() {
 
@@ -129,10 +130,14 @@ func batchDataProcessor(c *Client, fileName string, handler func(*Client, []Batc
 		campos := strings.Split(strings.TrimRight(scanner.Text(), "\n"), ",")
 
 		if len(campos) != expected_fields {
-			log.Infof("action: scan_batch_file | result: warning | msg: line fields does not match with a expected register. Found: %v in { %v }  ignoring..", len(campos), campos)
-			continue
-		} else if batchType == "WEATHER" && city == "montreal" {
-			campos = campos[:len(campos)-1]
+            log.Infof(" expected: %v | len(campos) : %v | campos: %v", expected_fields, len(campos), campos)
+		    if batchType == "WEATHER" && city == "montreal" {
+                campos = campos[:len(campos)-1]
+                log.Infof("action: filtered year - %v",campos)
+            }else{
+                log.Infof("action: scan_batch_file | result: warning | msg: line fields does not match with a expected register. Found: %v in { %v }  ignoring..", len(campos), campos)
+                continue
+            }
 		}
 
 		campos = append([]string{city}, campos...)
@@ -258,7 +263,7 @@ func (c *Client) Start() {
 	// Send Weather
 	for _, city := range cities {
 
-		registers, result := batchDataProcessor(c, root+city+"/"+WEATHER_FILE, ingestWeatherHandler, 20, "WEATHER", city)
+		registers, result := batchDataProcessor(c, root+city+"/"+WEATHER_FILE, ingestWeatherHandler, 21, "WEATHER", city)
 
 		if !result {
 			log.Warnf("action: send_weather | result: warning | client_id: %v | msg: some weather batch could not be send in city %v", c.config.ID, city)

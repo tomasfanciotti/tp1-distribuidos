@@ -53,8 +53,8 @@ RunTp(){
 
 }
 
-myfun(){
-    echo $1 $2 $3 $4
+TestProtocol(){
+    docker compose -f docker-compose-test.yaml up -d --build
 }
 
 if [ "$1" == "build" ]; then
@@ -68,6 +68,10 @@ elif [ "$1" == "run" ]; then
 elif [ "$1" == "stop" ]; then
     shift
     StopTp $@
+
+elif [ "$1" == "test" ]; then
+    shift
+    TestProtocol $@
 
 elif [ "$1" == "help" ]; then
 

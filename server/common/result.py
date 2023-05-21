@@ -32,7 +32,7 @@ class Result:
     @classmethod
     def decode(cls, msg: bytes):
         """ Decode a Result encoded from bytes"""
-        print(msg)
+
         if not isinstance(msg, bytes):
             return None
 

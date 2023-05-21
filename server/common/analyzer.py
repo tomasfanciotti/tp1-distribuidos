@@ -36,7 +36,7 @@ OP_CODE_EOF = 14
 
 FINISH_MESSAGE = "Queries termiandas"
 
-WEATHER_FIELDS = 22
+WEATHER_FIELDS = 23
 STATION_FIELDS = 7
 TRIPS_FIELDS = 9
 
@@ -227,6 +227,7 @@ class Analyzer(ServerInterface):
             return OP_CODE_WAIT, "para wacha"
 
         if EOF.is_eof(msg.decode()):
+            logging.info(f'action: get_query | result: inprogress | msg: received EOF msg -> {msg}')
             stage_ok = msg.decode().split(".")[1]
             self.queries_ok.add(stage_ok)
             if len(self.queries_ok) < 3:

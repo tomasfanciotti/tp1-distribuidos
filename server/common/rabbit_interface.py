@@ -42,6 +42,10 @@ class RabbitInterface:
         self.channel.exchange_declare(exchange='trip_topic', exchange_type='fanout')
 
         # Join exchanges
+        self.declare_and_bind('join1-stations-collector', 'station_topic')
+        self.declare_and_bind('join1-trips-collector', 'trip_topic')
+        self.declare_and_bind('join2-trips-collector', 'trip_topic')
+        self.declare_and_bind('join2-weather-collector', 'weather_topic')
         self.channel.exchange_declare(exchange="trip-start-station-topic", exchange_type="fanout")
         self.channel.exchange_declare(exchange="trip-end-station-topic", exchange_type="fanout")
         self.channel.exchange_declare(exchange="trip-weather-topic", exchange_type="fanout")
@@ -52,14 +56,18 @@ class RabbitInterface:
         self.channel.queue_declare(queue='raw_trip_data', durable=True)
 
         # Pipeline 1 Queues
+        self.declare_and_bind('query1-collector', 'trip-weather-topic')
         self.channel.queue_declare(queue='query1-pipe1', durable=True)
         # self.channel.queue_declare(queue='query1-pipe2', durable=True)
 
         # Pipeline 2 Queues
+        self.declare_and_bind('query2-collector', 'trip-start-station-topic')
         self.channel.queue_declare(queue='query2-pipe1', durable=True)
         # self.channel.queue_declare(queue='query2-pipe2', durable=True)
 
         # Pipeline 3 Queues
+        self.declare_and_bind('query3-collector', 'trip-start-station-topic')
+        self.declare_and_bind('query3-collector', 'trip-end-station-topic')
         self.channel.queue_declare(queue='query3-pipe1', durable=True)
         self.channel.queue_declare(queue='query3-pipe2', durable=True)
         self.channel.queue_declare(queue='query3-pipe3', durable=True)
@@ -68,11 +76,11 @@ class RabbitInterface:
         self.channel.queue_declare(queue='EOF_queue', durable=True)
         self.channel.queue_declare(queue='query_results', durable=True)
 
-    def bind_topic(self, exchange, routing_key, dest='default'):
+    def bind_topic(self, exchange, routing_key='', dest='default'):
         """ Binding of a exchange with a specific destination queue """
 
         if dest not in self.annon_q:
-            self.annon_q[dest] = self.channel.queue_declare(queue='', durable=True).method.queue
+            self.annon_q[dest] = dest  # self.channel.queue_declare(queue='', durable=True).method.queue
 
         single_exchange = True
         if isinstance(exchange, list):
@@ -158,3 +166,7 @@ class RabbitInterface:
             self.channel.queue_delete(queue=self.annon_q[name])
 
         self.conn.close()
+
+    def declare_and_bind(self, queue, exchange):
+        self.channel.queue_declare(queue=queue, durable=True)
+        self.channel.queue_bind(queue, exchange=exchange, routing_key="")

@@ -69,7 +69,7 @@ def joiner(ch, method, properties, body):
     trip_weather = (trip[TRIP_CITY_INDEX], trip[START_DATE_INDEX].split(" ")[0])
     if trip_weather not in weather_info:
         logging.warning(
-            f"action: join_callback | result: warning | msg: No weather info found for trip started in {trip_weather}. Ignoring join..")
+            f"action: join_callback | result: warning | msg: No weather info found for trip with key {trip_weather}. Ignoring join..")
         return
 
     wheather = weather_info[trip_weather]
@@ -81,21 +81,21 @@ def joiner(ch, method, properties, body):
 
 
 rabbit = EOFController(CONFIG_STAGE, NODE_ID, on_eof=log_eof, stop_on_eof=True)
-rabbit.bind_topic("weather_topic", "", dest="weathers")
-rabbit.bind_topic("trip_topic", "", dest="trips")
+rabbit.bind_topic("weather_topic", "", dest="join2-weather-collector")
+rabbit.bind_topic("trip_topic", "", dest="join2-trips-collector")
 
 batching = Batching(rabbit)
 
 # Weathers
 logging.info(f"action: consuming weathers | result: in_progress ")
-batching.consume_batch_topic(config_weather, dest="weathers")
+batching.consume_batch_topic(config_weather, dest="join2-weather-collector")
 
 rabbit.set_stage(JOIN_STAGE)
 rabbit.set_on_eof(log_eof, stop=False)
 
 # Trips
 logging.info(f"action: consuming trips | result: in_progress ")
-batching.consume_batch_topic(joiner, dest="trips")
+batching.consume_batch_topic(joiner, dest="join2-trips-collector")
 
 rabbit.disconnect()
 logging.info(f"action: consuming trips | result: done ")

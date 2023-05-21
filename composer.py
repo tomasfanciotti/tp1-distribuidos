@@ -143,9 +143,9 @@ def generate(clients):
 
     # Query 2
     services["query2_filter1"] = deepcopy(filter)
-    services["query2_filter1"]["container_name"] = "filter_by_trips"
-    services["query2_filter1"]["entrypoint"] = "python3 /app/filter.py"
-    services["query2_filter1"]["volumes"].append("./filters/query2/filter.py:/app/filter.py")
+    services["query2_filter1"]["container_name"] = "year_filter"
+    services["query2_filter1"]["entrypoint"] = "python3 /app/year_filter.py"
+    services["query2_filter1"]["volumes"].append("./filters/query2/year_filter.py:/app/year_filter.py")
     services["query2_filter1"]["depends_on"].extend(["query2_filter2"])
 
     services["query2_filter2"] = deepcopy(filter)
@@ -155,9 +155,9 @@ def generate(clients):
 
     # Query 3
     services["query3_filter1"] = deepcopy(filter)
-    services["query3_filter1"]["container_name"] = "join_stations"
-    services["query3_filter1"]["entrypoint"] = "python3 /app/join_stations.py"
-    services["query3_filter1"]["volumes"].append("./filters/query3/join_stations.py:/app/join_stations.py")
+    services["query3_filter1"]["container_name"] = "station_join"
+    services["query3_filter1"]["entrypoint"] = "python3 /app/station_join.py"
+    services["query3_filter1"]["volumes"].append("./filters/query3/station_join.py:/app/station_join.py")
     services["query3_filter1"]["depends_on"].extend(["query3_filter2"])
 
     services["query3_filter2"] = deepcopy(filter)
@@ -173,9 +173,9 @@ def generate(clients):
     services["query3_filter3"]["depends_on"].append("query3_filter4")
 
     services["query3_filter4"] = deepcopy(filter)
-    services["query3_filter4"]["container_name"] = "filter_by_avg"
-    services["query3_filter4"]["entrypoint"] = "python3 /app/filter.py"
-    services["query3_filter4"]["volumes"].append("./filters/query3/filter.py:/app/filter.py")
+    services["query3_filter4"]["container_name"] = "average_filter"
+    services["query3_filter4"]["entrypoint"] = "python3 /app/average_filter.py"
+    services["query3_filter4"]["volumes"].append("./filters/query3/average_filter.py:/app/average_filter.py")
 
     server["depends_on"].extend(["weather_filter", "station_filter", "trip_filter"])
 

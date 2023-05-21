@@ -68,7 +68,7 @@ def joiner(ch, method, properties, body):
     """
 
     trip = decode(body)
-    logging.info(f"action: join_callback | result: in_progress | msg: {trip} ")
+    logging.debug(f"action: join_callback | result: in_progress | msg: {trip} ")
 
     trip_start_station = (trip[CITY_ID], trip[START_STATION], trip[TRIP_YEAR_ID])
     trip_end_station = (trip[CITY_ID], trip[END_STATION], trip[TRIP_YEAR_ID])
@@ -99,19 +99,19 @@ def joiner(ch, method, properties, body):
 
 
 rabbit = EOFController(CONFIG_STAGE, NODE_ID, on_eof=log_eof, stop_on_eof=True)
-rabbit.bind_topic("station_topic", "", dest="stations")
-rabbit.bind_topic("trip_topic", "", dest="trips")
+rabbit.bind_topic("station_topic", "", dest="join1-stations-collector")
+rabbit.bind_topic("trip_topic", "", dest="join1-trips-collector")
 
 batching = Batching(rabbit)
 
 logging.info(f"action: consuming stations | result: in_progress ")
-batching.consume_batch_topic(config_station, dest="stations" )
+batching.consume_batch_topic(config_station, dest="join1-stations-collector" )
 
 rabbit.set_stage(JOIN_STAGE)
 rabbit.set_on_eof(log_eof, stop=False)
 
 logging.info(f"action: consuming trips | result: in_progress ")
-batching.consume_batch_topic(joiner, dest="trips")
+batching.consume_batch_topic(joiner, dest="join1-trips-collector")
 
 logging.info(f"action: consuming trips | result: done ")
 
