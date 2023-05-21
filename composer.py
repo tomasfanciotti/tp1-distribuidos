@@ -102,39 +102,45 @@ def generate(clients):
     services["weather_filter"]["volumes"].append("./filters/weather/weather_filter.py:/app/weather_filter.py")
     services["weather_filter"]["deploy"] = {}
     services["weather_filter"]["deploy"]["replicas"] = 1
-    services["weather_filter"]["depends_on"].extend(["trip_weather_joiner", "trip_station_joiner"])
+    services["weather_filter"]["depends_on"].extend(["joiner_query1", "joiner_query2", "joiner_query3"])
 
     services["station_filter"] = deepcopy(filter)
     services["station_filter"]["container_name"] = "station_filter"
     services["station_filter"]["entrypoint"] = "python3 /app/station_filter.py"
     services["station_filter"]["volumes"].append("./filters/station/station_filter.py:/app/station_filter.py")
-    services["station_filter"]["depends_on"].extend(["trip_weather_joiner", "trip_station_joiner"])
+    services["station_filter"]["depends_on"].extend(["joiner_query1", "joiner_query2", "joiner_query3"])
 
     services["trip_filter"] = deepcopy(filter)
     services["trip_filter"]["container_name"] = "trip_filter"
     services["trip_filter"]["entrypoint"] = "python3 /app/trip_filter.py"
     services["trip_filter"]["volumes"].append("./filters/trip/trip_filter.py:/app/trip_filter.py")
-    services["trip_filter"]["depends_on"].extend(["trip_weather_joiner", "trip_station_joiner"])
+    services["trip_filter"]["depends_on"].extend(["joiner_query1", "joiner_query2", "joiner_query3"])
 
     # Joiners
-    services["trip_weather_joiner"] = deepcopy(filter)
-    services["trip_weather_joiner"]["container_name"] = "trip_weather_joiner"
-    services["trip_weather_joiner"]["entrypoint"] = "python3 /app/trip_weather_joiner.py"
-    services["trip_weather_joiner"]["volumes"].append("./joiners/trip_weather/trip_weather_joiner.py:/app/trip_weather_joiner.py")
-    services["trip_weather_joiner"]["depends_on"].extend(["query1_filter1", "query2_filter1", "query3_filter1"])
+    services["joiner_query1"] = deepcopy(filter)
+    services["joiner_query1"]["container_name"] = "joiner_query1"
+    services["joiner_query1"]["entrypoint"] = "python3 /app/joiner_query1.py"
+    services["joiner_query1"]["volumes"].append("./joiners/trip_weather/joiner_query1.py:/app/joiner_query1.py")
+    services["joiner_query1"]["depends_on"].extend(["query1_filter2", "query2_filter2", "query3_filter2"])
 
-    services["trip_station_joiner"] = deepcopy(filter)
-    services["trip_station_joiner"]["container_name"] = "trip_station_joiner"
-    services["trip_station_joiner"]["entrypoint"] = "python3 /app/trip_station_joiner.py"
-    services["trip_station_joiner"]["volumes"].append("./joiners/trip_station/trip_station_joiner.py:/app/trip_station_joiner.py")
-    services["trip_station_joiner"]["depends_on"].extend(["query1_filter1", "query2_filter1", "query3_filter1"])
+    services["joiner_query2"] = deepcopy(filter)
+    services["joiner_query2"]["container_name"] = "joiner_query2"
+    services["joiner_query2"]["entrypoint"] = "python3 /app/joiner_query2.py"
+    services["joiner_query2"]["volumes"].append("./joiners/trip_station/joiner_query2.py:/app/joiner_query2.py")
+    services["joiner_query2"]["depends_on"].extend(["query1_filter2", "query2_filter2", "query3_filter2"])
+
+    services["joiner_query3"] = deepcopy(filter)
+    services["joiner_query3"]["container_name"] = "joiner_query3"
+    services["joiner_query3"]["entrypoint"] = "python3 /app/joiner_query3.py"
+    services["joiner_query3"]["volumes"].append("./joiners/trip_station/joiner_query3.py:/app/joiner_query3.py")
+    services["joiner_query3"]["depends_on"].extend(["query1_filter2", "query2_filter2", "query3_filter2"])
 
     # Query 1
-    services["query1_filter1"] = deepcopy(filter)
-    services["query1_filter1"]["container_name"] = "query1_filter"
-    services["query1_filter1"]["entrypoint"] = "python3 /app/prectot_filter.py"
-    services["query1_filter1"]["volumes"].append("./filters/query1/prectot_filter.py:/app/prectot_filter.py")
-    services["query1_filter1"]["depends_on"].extend(["query1_filter2"])
+    #services["query1_filter1"] = deepcopy(filter)
+    #services["query1_filter1"]["container_name"] = "query1_filter"
+    #services["query1_filter1"]["entrypoint"] = "python3 /app/prectot_filter.py"
+    #services["query1_filter1"]["volumes"].append("./filters/query1/prectot_filter.py:/app/prectot_filter.py")
+    #services["query1_filter1"]["depends_on"].extend(["query1_filter2"])
 
     services["query1_filter2"] = deepcopy(filter)
     services["query1_filter2"]["container_name"] = "query1_average_calc"
@@ -142,11 +148,11 @@ def generate(clients):
     services["query1_filter2"]["volumes"].append("./filters/query1/average_calc.py:/app/average_calc.py")
 
     # Query 2
-    services["query2_filter1"] = deepcopy(filter)
-    services["query2_filter1"]["container_name"] = "filter_by_trips"
-    services["query2_filter1"]["entrypoint"] = "python3 /app/filter.py"
-    services["query2_filter1"]["volumes"].append("./filters/query2/filter.py:/app/filter.py")
-    services["query2_filter1"]["depends_on"].extend(["query2_filter2"])
+    # services["query2_filter1"] = deepcopy(filter)
+    # services["query2_filter1"]["container_name"] = "filter_by_trips"
+    # services["query2_filter1"]["entrypoint"] = "python3 /app/filter.py"
+    # services["query2_filter1"]["volumes"].append("./filters/query2/filter.py:/app/filter.py")
+    # services["query2_filter1"]["depends_on"].extend(["query2_filter2"])
 
     services["query2_filter2"] = deepcopy(filter)
     services["query2_filter2"]["container_name"] = "counter"
@@ -154,11 +160,11 @@ def generate(clients):
     services["query2_filter2"]["volumes"].append("./filters/query2/counter.py:/app/counter.py")
 
     # Query 3
-    services["query3_filter1"] = deepcopy(filter)
-    services["query3_filter1"]["container_name"] = "join_stations"
-    services["query3_filter1"]["entrypoint"] = "python3 /app/join_stations.py"
-    services["query3_filter1"]["volumes"].append("./filters/query3/join_stations.py:/app/join_stations.py")
-    services["query3_filter1"]["depends_on"].extend(["query3_filter2"])
+    # services["query3_filter1"] = deepcopy(filter)
+    # services["query3_filter1"]["container_name"] = "join_stations"
+    # services["query3_filter1"]["entrypoint"] = "python3 /app/join_stations.py"
+    # services["query3_filter1"]["volumes"].append("./filters/query3/join_stations.py:/app/join_stations.py")
+    # services["query3_filter1"]["depends_on"].extend(["query3_filter2"])
 
     services["query3_filter2"] = deepcopy(filter)
     services["query3_filter2"]["container_name"] = "distance_calc"
@@ -174,8 +180,8 @@ def generate(clients):
 
     services["query3_filter4"] = deepcopy(filter)
     services["query3_filter4"]["container_name"] = "filter_by_avg"
-    services["query3_filter4"]["entrypoint"] = "python3 /app/filter.py"
-    services["query3_filter4"]["volumes"].append("./filters/query3/filter.py:/app/filter.py")
+    services["query3_filter4"]["entrypoint"] = "python3 /app/average_filter.py"
+    services["query3_filter4"]["volumes"].append("./filters/query3/average_filter.py:/app/average_filter.py")
 
     server["depends_on"].extend(["weather_filter", "station_filter", "trip_filter"])
 

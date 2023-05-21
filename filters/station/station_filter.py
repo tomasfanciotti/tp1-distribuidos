@@ -20,6 +20,12 @@ STAGE = "raw_station_filter"
 NODE_ID = os.environ.get('HOSTNAME')
 logging.info(f"action: station_fiter | result: startup | node_id: {NODE_ID}")
 
+Q2_YEARS_FILTER = ['2016', '2017']
+Q3_CITY_FILTER = 'montreal'
+
+# Station fields
+CITY_IDX= 0
+YEAR_IDX= 5
 
 def log_eof(ch, method, properties, body):
     batching.push_buffer()
@@ -35,12 +41,14 @@ def filter_station(ch, method, properties, body):
     reg = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | body: {reg} ")
 
-    filtered = reg  # No filter applyed
+    if reg[CITY_IDX].lower() != Q3_CITY_FILTER and reg[YEAR_IDX] not in Q2_YEARS_FILTER:
+        # Filter station
+        return
+
+    filtered = reg
 
     batching.publish_batch_to_topic("station_topic", encode(filtered))
-    logging.info(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
-
-    logging.info(f"action: filter_callback | result: success ")
+    logging.info(f"action: filter_callback | result: success | published: {filtered} ")
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)   # Instancia de RabbitInterface con un controller para el EOF

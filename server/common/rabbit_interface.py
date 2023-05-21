@@ -39,12 +39,17 @@ class RabbitInterface:
         # Data exchanges
         self.channel.exchange_declare(exchange='weather_topic', exchange_type='fanout')
         self.channel.exchange_declare(exchange='station_topic', exchange_type='fanout')
-        self.channel.exchange_declare(exchange='trip_topic', exchange_type='fanout')
+        # self.channel.exchange_declare(exchange='trip_topic', exchange_type='fanout')
 
         # Join exchanges
-        self.channel.exchange_declare(exchange="trip-start-station-topic", exchange_type="fanout")
-        self.channel.exchange_declare(exchange="trip-end-station-topic", exchange_type="fanout")
-        self.channel.exchange_declare(exchange="trip-weather-topic", exchange_type="fanout")
+        # self.channel.exchange_declare(exchange="trip-start-station-topic", exchange_type="fanout")
+        # self.channel.exchange_declare(exchange="trip-end-station-topic", exchange_type="fanout")
+        # self.channel.exchange_declare(exchange="trip-weather-topic", exchange_type="fanout")
+
+        # Join queues
+        self.channel.queue_declare(queue='trip_to_joiner_q1', durable=True)
+        self.channel.queue_declare(queue='trip_to_joiner_q2', durable=True)
+        self.channel.queue_declare(queue='trip_to_joiner_q3', durable=True)
 
         # Raw data Queues
         self.channel.queue_declare(queue='raw_weather_data', durable=True)
@@ -52,14 +57,17 @@ class RabbitInterface:
         self.channel.queue_declare(queue='raw_trip_data', durable=True)
 
         # Pipeline 1 Queues
+        self.channel.queue_declare(queue='collector_q1', durable=True)
         self.channel.queue_declare(queue='query1-pipe1', durable=True)
         # self.channel.queue_declare(queue='query1-pipe2', durable=True)
 
         # Pipeline 2 Queues
+        self.channel.queue_declare(queue='collector_q2', durable=True)
         self.channel.queue_declare(queue='query2-pipe1', durable=True)
         # self.channel.queue_declare(queue='query2-pipe2', durable=True)
 
         # Pipeline 3 Queues
+        self.channel.queue_declare(queue='collector_q3', durable=True)
         self.channel.queue_declare(queue='query3-pipe1', durable=True)
         self.channel.queue_declare(queue='query3-pipe2', durable=True)
         self.channel.queue_declare(queue='query3-pipe3', durable=True)

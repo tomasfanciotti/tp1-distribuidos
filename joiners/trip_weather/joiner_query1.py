@@ -16,8 +16,8 @@ logging.basicConfig(
 # reduce pika log level
 logging.getLogger("pika").setLevel(logging.WARNING)
 
-CONFIG_STAGE = "weather_joiner_config"
-JOIN_STAGE = "weather_join"
+CONFIG_STAGE = "joiner_query1_config"
+JOIN_STAGE = "joiner_query1_join"
 NODE_ID = os.environ.get('HOSTNAME')
 logging.info(f"action: trip_weather_joiner | result: startup | node_id: {NODE_ID}")
 
@@ -31,6 +31,7 @@ PRECTOT_INDEX = 2
 # Trip file
 TRIP_CITY_INDEX = 0
 START_DATE_INDEX = 1
+DURATION= 2
 
 
 def log_eof(ch, method, properties, body):
@@ -40,7 +41,7 @@ def log_eof(ch, method, properties, body):
 
 def config_weather(ch, method, properties, body):
     """
-    input:  [ CITY, DATE, PRECTOT ]
+    input:  [ CITY, DATE ]
     output: None
     """
 
@@ -48,7 +49,7 @@ def config_weather(ch, method, properties, body):
     logging.debug(f"action: filter_callback | result: in_progress | msg: {weather} ")
 
     key = (weather[CITY_INDEX], weather[DATE_INDEX].split(" ")[0])
-    value = [weather[PRECTOT_INDEX]]
+    value = [":v"]
 
     if key in weather_info:
         logging.warning(f"action: filter_callback | result: warning | msg: key {key} already weather info. Overwriting")
@@ -59,8 +60,8 @@ def config_weather(ch, method, properties, body):
 
 def joiner(ch, method, properties, body):
     """
-    input:  [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR]
-    output: [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR, PRECTOT]
+    input:  [ CITY, START_DATE, DURATION]
+    output: [ CITY, DURATION]
     """
 
     trip = decode(body)
@@ -68,21 +69,21 @@ def joiner(ch, method, properties, body):
 
     trip_weather = (trip[TRIP_CITY_INDEX], trip[START_DATE_INDEX].split(" ")[0])
     if trip_weather not in weather_info:
-        logging.warning(
+        logging.debug(
             f"action: join_callback | result: warning | msg: No weather info found for trip started in {trip_weather}. Ignoring join..")
         return
 
-    wheather = weather_info[trip_weather]
-    joined = trip + wheather
+    wheather = weather_info[trip_weather],
+
+    joined = [trip[CITY_INDEX], trip[DURATION]]
     logging.debug(f"action: join_callback | result: in_progress | msg: trip and weather joined -> {joined} ")
 
-    batching.publish_batch_to_topic("trip-weather-topic", encode(joined))
+    batching.publish_batch_to_queue("collector_q1", encode(joined))
     logging.debug(f"action: join_callback | result: success | msg: published join in topic")
 
 
 rabbit = EOFController(CONFIG_STAGE, NODE_ID, on_eof=log_eof, stop_on_eof=True)
 rabbit.bind_topic("weather_topic", "", dest="weathers")
-rabbit.bind_topic("trip_topic", "", dest="trips")
 
 batching = Batching(rabbit)
 
@@ -95,7 +96,7 @@ rabbit.set_on_eof(log_eof, stop=False)
 
 # Trips
 logging.info(f"action: consuming trips | result: in_progress ")
-batching.consume_batch_topic(joiner, dest="trips")
+batching.consume_batch_queue("trip_to_joiner_q1", joiner)
 
 rabbit.disconnect()
 logging.info(f"action: consuming trips | result: done ")

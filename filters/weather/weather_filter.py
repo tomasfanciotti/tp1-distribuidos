@@ -24,6 +24,7 @@ CITY_INDEX = 0
 DATE_INDEX = 1
 PRECTOT_INDEX = 2
 
+PRECTOT_TRESHOLD = 1
 
 def log_eof(ch, method, properties, body):
     batching.push_buffer()
@@ -33,16 +34,17 @@ def log_eof(ch, method, properties, body):
 def filter_weather(ch, method, properties, body):
     """
         input:  [ CITY, DATE, PRECTOT, QV2M, RH2M, PS, T2M_RANGE, TS, ... ]
-        output: [ CITY, DATE, PRECTOT ]
+        output: [ CITY, DATE ]
     """
 
     reg = decode(body)
     logging.info(f"action: filter_callback | result: in_progress | body: {reg} ")
 
-    filtered = [reg[CITY_INDEX], reg[DATE_INDEX], reg[PRECTOT_INDEX]]
+    if float(reg[PRECTOT_INDEX]) > PRECTOT_TRESHOLD:
 
-    batching.publish_batch_to_topic("weather_topic", encode(filtered))
-    logging.info(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
+        filtered = [reg[CITY_INDEX], reg[DATE_INDEX]]
+        batching.publish_batch_to_topic("weather_topic", encode(filtered))
+        logging.info(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
 
     logging.info(f"action: filter_callback | result: success ")
 

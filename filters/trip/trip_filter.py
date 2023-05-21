@@ -29,6 +29,9 @@ DURATION_INDEX = 5
 MEMBER_INDEX = 6
 YEAR_INDEX = 7
 
+Q2_YEARS_FILTER = ['2016', '2017']
+Q3_CITY_FILTER = 'montreal'
+
 
 def log_eof(ch, method, properties, body):
     batching.push_buffer()
@@ -38,7 +41,9 @@ def log_eof(ch, method, properties, body):
 def filter_trip(ch, method, properties, body):
     """
         input:  [ CITY, START_DATE, START_STATION, END_DATE, END_STATION, DURATION, MEMBER, YEAR]
-        output: [ CITY, START_DATE, START_STATION, END_STATION, DURATION, YEAR]
+        output to joiner1: [ CITY, START_DATE, DURATION]
+        output to joiner2: [ CITY, START_STATION, YEAR ]
+        output to joiner3: [ CITY, START_STATION, END_STATION, YEAR ]
     """
 
     reg = decode(body)
@@ -49,11 +54,19 @@ def filter_trip(ch, method, properties, body):
         if float(reg[DURATION_INDEX]) < 0:
             reg[DURATION_INDEX] = "0"
 
-        filtered = [reg[CITY_INDEX], reg[START_DATE_INDEX], reg[START_STATION_INDEX], reg[END_STATION_INDEX],
-                    reg[DURATION_INDEX],
-                    reg[YEAR_INDEX]]
+        # To joiner 1
+        filtered = [reg[CITY_INDEX], reg[START_DATE_INDEX], reg[DURATION_INDEX]]
+        batching.publish_batch_to_queue("trip_to_joiner_q1", encode(filtered))
 
-        batching.publish_batch_to_topic("trip_topic", encode(filtered))
+        # To joiner 2
+        if reg[YEAR_INDEX] in Q2_YEARS_FILTER:
+            filtered = [reg[CITY_INDEX], reg[START_STATION_INDEX], reg[YEAR_INDEX]]
+            batching.publish_batch_to_queue("trip_to_joiner_q2", encode(filtered))
+
+        # To joiner 3
+        if reg[CITY_INDEX].lower() == Q3_CITY_FILTER:
+            filtered = [reg[CITY_INDEX], reg[START_STATION_INDEX], reg[END_STATION_INDEX], reg[YEAR_INDEX]]
+            batching.publish_batch_to_queue("trip_to_joiner_q3", encode(filtered))
 
         logging.debug(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
     else:

@@ -24,10 +24,11 @@ TARGET = "montreal"
 
 CITY_IDX = 0
 STATION_NAME_IDX = 1
-START_LATITUDE_IDX = 2
-START_LONGITUDE_IDX = 3
-END_LATITUDE_IDX = 4
-END_LONGITUDE_IDX = 5
+STATION_YEAR_IDX = 2
+START_LATITUDE_IDX = 3
+START_LONGITUDE_IDX = 4
+END_LATITUDE_IDX = 5
+END_LONGITUDE_IDX = 6
 
 
 def log_eof(ch, method, properties, body):
@@ -37,7 +38,7 @@ def log_eof(ch, method, properties, body):
 
 def callback(ch, method, properties, body):
     """
-        inpiut: [ CITY, END_STATION, START_LATITUDE, START_LONGITUDE, END_LATITUDE, END_LONGITUDE]
+        inpiut: [ CITY, END_NAME, YEAR, START_LATITUDE, START_LONGITUDE, END_LATITUDE, END_LONGITUDE]
         output: [ CITY, END_STATION, DISTANCE]
     """
 
@@ -63,7 +64,7 @@ rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)
 batching = Batching(rabbit)
 
 logging.info(f"action: consuming | result: in_progress ")
-batching.consume_batch_queue("query3-pipe1", callback)
+batching.consume_batch_queue("collector_q3", callback)
 
 rabbit.disconnect()
 logging.info(f"action: consuming | result: done")

@@ -28,13 +28,21 @@
       ],
       "response": [
         {
-          "type": "topic",
-          "name": "trip_topic"
+          "type": "queue",
+          "name": "trip_to_joiner_q1"
+        },
+        {
+          "type": "queue",
+          "name": "trip_to_joiner_q2"
+        },
+        {
+          "type": "queue",
+          "name": "trip_to_joiner_q3"
         }
       ]
     },
     {
-      "id": 0,
+      "id": 2,
       "name": "raw_station_filter",
       "source": [
         {
@@ -50,8 +58,8 @@
       ]
     },
     {
-      "id": 2,
-      "name": "weather_joiner_config",
+      "id": 3,
+      "name": "joiner_query1_config",
       "source": [
         {
           "type": "topic",
@@ -61,25 +69,52 @@
       "response": []
     },
     {
-      "id": 3,
-      "name": "weather_join",
+      "id": 4,
+      "name": "joiner_query1_join",
       "source": [
         {
-          "type": "topic",
-          "name": "trip_topic"
+          "type": "queue",
+          "name": "trip_to_joiner_q1"
         }
       ],
-      "response": [
+      "response":  [
         {
-          "type": "topic",
-          "name": "trip-weather-topic"
+          "type": "queue",
+          "name": "collector_q1"
         }
       ]
     },
 
     {
-      "id": 2,
-      "name": "station_joiner_config",
+      "id": 5,
+      "name": "joiner_query2_config",
+      "source": [
+        {
+          "type": "topic",
+          "name": "station_topic"
+        }
+      ],
+      "response": []
+    },
+    {
+      "id": 6,
+      "name": "joiner_query2_join",
+      "source": [
+        {
+          "type": "queue",
+          "name": "trip_to_joiner_q2"
+        }
+      ],
+      "response":  [
+        {
+          "type": "queue",
+          "name": "collector_q2"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "joiner_query3_config",
       "source": [
         {
           "type": "topic",
@@ -90,37 +125,17 @@
     },
     {
       "id": 3,
-      "name": "station_join",
+      "name": "joiner_query3_join",
       "source": [
-        {
-          "type": "topic",
-          "name": "trip_topic"
-        }
-      ],
-      "response": [
-        {
-          "type": "topic",
-          "name": "trip-start-station-topic"
-        },
-        {
-          "type": "topic",
-          "name": "trip-end-station-topic"
-        }
-      ]
-    },
-    {
-      "id": 4,
-      "name": "prectot_filter",
-      "source": [
-        {
-          "type": "topic",
-          "name": "trip-weather-topic"
-        }
-      ],
-      "response": [
         {
           "type": "queue",
-          "name": "query1-pipe1"
+          "name": "trip_to_joiner_q3"
+        }
+      ],
+      "response":  [
+        {
+          "type": "queue",
+          "name": "collector_q3"
         }
       ]
     },
@@ -130,29 +145,13 @@
       "source": [
         {
           "type": "queue",
-          "name": "query1-pipe1"
+          "name": "collector_q1"
         }
       ],
       "response": [
         {
           "type": "queue",
           "name": "query_results"
-        }
-      ]
-    },
-    {
-      "id": 4,
-      "name": "q2-filter",
-      "source": [
-        {
-          "type": "topic",
-          "name": "trip-start-station-topic"
-        }
-      ],
-      "response": [
-        {
-          "type": "queue",
-          "name": "query2-pipe1"
         }
       ]
     },
@@ -162,7 +161,7 @@
       "source": [
         {
           "type": "queue",
-          "name": "query2-pipe1"
+          "name": "collector_q2"
         }
       ],
       "response": [
@@ -173,32 +172,12 @@
       ]
     },
     {
-      "id": 5,
-      "name": "q3-join",
-      "source": [
-        {
-          "type": "topic",
-          "name": "trip-start-station-topic"
-        },
-        {
-          "type": "topic",
-          "name": "trip-end-station-topic"
-        }
-      ],
-      "response": [
-        {
-          "type": "queue",
-          "name": "query3-pipe1"
-        }
-      ]
-    },
-    {
       "id": 4,
       "name": "q3-distance",
       "source": [
         {
           "type": "queue",
-          "name": "query3-pipe1"
+          "name": "collector_q3"
         }
       ],
       "response": [

@@ -31,7 +31,7 @@ status = {}
 
 def callback(ch, method, properties, body):
     """
-        input: [CITY, START_STATION, YEAR]
+        input: [ CITY, START_STATION_NAME, YEAR ]
         output: [CITY, STATION]
     """
 
@@ -84,7 +84,7 @@ rabbit = EOFController(STAGE, NODE_ID, on_eof=filter_results)
 batching = Batching(rabbit)
 
 logging.info(f"action: consuming | result: in_progress ")
-batching.consume_batch_queue("query2-pipe1", callback)
+batching.consume_batch_queue("collector_q2", callback)
 
 logging.info(f"action: consuming | result: done")
 

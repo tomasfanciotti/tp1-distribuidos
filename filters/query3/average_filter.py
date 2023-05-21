@@ -26,7 +26,7 @@ CITY_IDX = 0
 STATION_IDX = 1
 AVERAGE_IDX = 2
 
-THRESHOLD = 1
+THRESHOLD = 6
 
 
 def log_eof(ch, method, properties, body):

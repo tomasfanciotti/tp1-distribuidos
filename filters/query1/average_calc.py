@@ -22,7 +22,7 @@ STAGE = "average_calc"
 NODE_ID = os.environ.get('HOSTNAME')
 logging.info(f"action: average_filter | result: startup | node_id: {NODE_ID}")
 
-DURATION_INDEX = 0
+DURATION_INDEX = 1
 
 status = {"trips": 0,
           "duration_sum": 0}
@@ -53,7 +53,7 @@ def avg(ch, method, properties, body):
 
 def callback(ch, method, properties, body):
     """
-        input:  [ DURATION ]
+        input:  [ CITY, DURATION ]
         output: [ AVERAGE ]
     """
     trip = decode(body)
@@ -63,7 +63,7 @@ def callback(ch, method, properties, body):
     status["duration_sum"] += float(trip[DURATION_INDEX])
 
     logging.debug(
-        f"action: filter_callback | result: success | trips: {status['trips']} | duration_sum : {status['duration_sum']} ")
+        f"action: filter_callback | result: success | trips: {status['trips']} | duration_sum : {status['duration_sum']}")
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=avg)
@@ -71,7 +71,7 @@ rabbit = EOFController(STAGE, NODE_ID, on_eof=avg)
 logging.info(f"action: consuming trip-weathers | result: in_progress ")
 
 batching = Batching(rabbit)
-batching.consume_batch_queue("query1-pipe1", callback)
+batching.consume_batch_queue("collector_q1", callback)
 
 logging.info(f"action: consuming trip-weathers | result: done")
 
