@@ -11,7 +11,6 @@
 bin/
 
 # generated files
-docker-compose-gen.yaml
 server/network
 server/bets.csv
 

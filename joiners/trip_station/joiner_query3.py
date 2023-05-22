@@ -71,18 +71,18 @@ def joiner(ch, method, properties, body):
     """
 
     trip = decode(body)
-    logging.info(f"action: join_callback | result: in_progress | msg: {trip} ")
+    logging.debug(f"action: join_callback | result: in_progress | msg: {trip} ")
 
     trip_start_station = (trip[TRIP_CITY_ID], trip[START_STATION], trip[TRIP_YEAR_ID])
     trip_end_station = (trip[TRIP_CITY_ID], trip[END_STATION], trip[TRIP_YEAR_ID])
 
     if trip_start_station not in station_info:
-        logging.warning(
+        logging.debug(
             f"action: join_callback | result: warning | msg: No station info found for trip STARTED in {trip_start_station}. Ignoring join..")
         return
 
     if trip_end_station not in station_info:
-        logging.warning(
+        logging.debug(
             f"action: join_callback | result: warning | msg: No station info found for trip ENDED in {trip_end_station}. Ignoring join..")
         return
 

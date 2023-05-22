@@ -97,11 +97,9 @@ def generate(clients):
 
     # Raw Data Filters
     services["weather_filter"] = deepcopy(filter)
-    # services["weather_filter"]["container_name"] = "weather_filter"
+    services["weather_filter"]["container_name"] = "weather_filter"
     services["weather_filter"]["entrypoint"] = "python3 /app/weather_filter.py"
     services["weather_filter"]["volumes"].append("./filters/weather/weather_filter.py:/app/weather_filter.py")
-    services["weather_filter"]["deploy"] = {}
-    services["weather_filter"]["deploy"]["replicas"] = 1
     services["weather_filter"]["depends_on"].extend(["joiner_query1", "joiner_query2", "joiner_query3"])
 
     services["station_filter"] = deepcopy(filter)
@@ -115,6 +113,8 @@ def generate(clients):
     services["trip_filter"]["entrypoint"] = "python3 /app/trip_filter.py"
     services["trip_filter"]["volumes"].append("./filters/trip/trip_filter.py:/app/trip_filter.py")
     services["trip_filter"]["depends_on"].extend(["joiner_query1", "joiner_query2", "joiner_query3"])
+    services["trip_filter"]["deploy"] = {}
+    services["trip_filter"]["deploy"]["replicas"] = 2
 
     # Joiners
     services["joiner_query1"] = deepcopy(filter)
@@ -167,10 +167,12 @@ def generate(clients):
     # services["query3_filter1"]["depends_on"].extend(["query3_filter2"])
 
     services["query3_filter2"] = deepcopy(filter)
-    services["query3_filter2"]["container_name"] = "distance_calc"
+    # services["query3_filter2"]["container_name"] = "distance_calc"
     services["query3_filter2"]["entrypoint"] = "python3 /app/distance_calc.py"
     services["query3_filter2"]["volumes"].append("./filters/query3/distance_calc.py:/app/distance_calc.py")
     services["query3_filter2"]["depends_on"].extend(["query3_filter3"])
+    services["query3_filter2"]["deploy"] = {}
+    services["query3_filter2"]["deploy"]["replicas"] = 2
 
     services["query3_filter3"] = deepcopy(filter)
     services["query3_filter3"]["container_name"] = "average_calc"

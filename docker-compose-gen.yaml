@@ -1,0 +1,321 @@
+name: tp1
+networks:
+  analyzer_net:
+    ipam:
+      config:
+      - subnet: 172.25.125.0/24
+      driver: default
+services:
+  client-1:
+    container_name: client-1
+    depends_on:
+    - server
+    entrypoint: /app/client
+    environment:
+    - LOGGING_LEVEL=DEBUG
+    - CLI_ID=1
+    - DATA_SOURCE=/app/data/
+    image: client:latest
+    networks:
+    - analyzer_net
+    volumes:
+    - ./client/:/app/config/
+    - ./.data/dataset/:/app/data/
+  eof_manager:
+    container_name: eof_manager
+    depends_on:
+    - rabbitmq
+    entrypoint: python3 /app/eof_manager.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    volumes:
+    - ./server/common/:/app/
+  joiner_query1:
+    container_name: joiner_query1
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    - query1_filter2
+    - query2_filter2
+    - query3_filter2
+    entrypoint: python3 /app/joiner_query1.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/common/messaging_protocol.py:/app/messaging_protocol.py
+    - ./server/common/rabbit_interface.py:/app/rabbit_interface.py
+    - ./server/common/eof.py:/app/eof.py
+    - ./server/common/eof_controller.py:/app/eof_controller.py
+    - ./server/common/result.py:/app/result.py
+    - ./server/common/batching.py:/app/batching.py
+    - ./joiners/trip_weather/joiner_query1.py:/app/joiner_query1.py
+  joiner_query2:
+    container_name: joiner_query2
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    - query1_filter2
+    - query2_filter2
+    - query3_filter2
+    entrypoint: python3 /app/joiner_query2.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/common/messaging_protocol.py:/app/messaging_protocol.py
+    - ./server/common/rabbit_interface.py:/app/rabbit_interface.py
+    - ./server/common/eof.py:/app/eof.py
+    - ./server/common/eof_controller.py:/app/eof_controller.py
+    - ./server/common/result.py:/app/result.py
+    - ./server/common/batching.py:/app/batching.py
+    - ./joiners/trip_station/joiner_query2.py:/app/joiner_query2.py
+  joiner_query3:
+    container_name: joiner_query3
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    - query1_filter2
+    - query2_filter2
+    - query3_filter2
+    entrypoint: python3 /app/joiner_query3.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/common/messaging_protocol.py:/app/messaging_protocol.py
+    - ./server/common/rabbit_interface.py:/app/rabbit_interface.py
+    - ./server/common/eof.py:/app/eof.py
+    - ./server/common/eof_controller.py:/app/eof_controller.py
+    - ./server/common/result.py:/app/result.py
+    - ./server/common/batching.py:/app/batching.py
+    - ./joiners/trip_station/joiner_query3.py:/app/joiner_query3.py
+  query1_filter2:
+    container_name: query1_average_calc
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    entrypoint: python3 /app/average_calc.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/common/messaging_protocol.py:/app/messaging_protocol.py
+    - ./server/common/rabbit_interface.py:/app/rabbit_interface.py
+    - ./server/common/eof.py:/app/eof.py
+    - ./server/common/eof_controller.py:/app/eof_controller.py
+    - ./server/common/result.py:/app/result.py
+    - ./server/common/batching.py:/app/batching.py
+    - ./filters/query1/average_calc.py:/app/average_calc.py
+  query2_filter2:
+    container_name: counter
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    entrypoint: python3 /app/counter.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/common/messaging_protocol.py:/app/messaging_protocol.py
+    - ./server/common/rabbit_interface.py:/app/rabbit_interface.py
+    - ./server/common/eof.py:/app/eof.py
+    - ./server/common/eof_controller.py:/app/eof_controller.py
+    - ./server/common/result.py:/app/result.py
+    - ./server/common/batching.py:/app/batching.py
+    - ./filters/query2/counter.py:/app/counter.py
+  query3_filter2:
+    deploy:
+      replicas: 2
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    - query3_filter3
+    entrypoint: python3 /app/distance_calc.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/common/messaging_protocol.py:/app/messaging_protocol.py
+    - ./server/common/rabbit_interface.py:/app/rabbit_interface.py
+    - ./server/common/eof.py:/app/eof.py
+    - ./server/common/eof_controller.py:/app/eof_controller.py
+    - ./server/common/result.py:/app/result.py
+    - ./server/common/batching.py:/app/batching.py
+    - ./filters/query3/distance_calc.py:/app/distance_calc.py
+  query3_filter3:
+    container_name: average_calc
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    - query3_filter4
+    entrypoint: python3 /app/average_calc.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/common/messaging_protocol.py:/app/messaging_protocol.py
+    - ./server/common/rabbit_interface.py:/app/rabbit_interface.py
+    - ./server/common/eof.py:/app/eof.py
+    - ./server/common/eof_controller.py:/app/eof_controller.py
+    - ./server/common/result.py:/app/result.py
+    - ./server/common/batching.py:/app/batching.py
+    - ./filters/query3/average_calc.py:/app/average_calc.py
+  query3_filter4:
+    container_name: filter_by_avg
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    entrypoint: python3 /app/average_filter.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/common/messaging_protocol.py:/app/messaging_protocol.py
+    - ./server/common/rabbit_interface.py:/app/rabbit_interface.py
+    - ./server/common/eof.py:/app/eof.py
+    - ./server/common/eof_controller.py:/app/eof_controller.py
+    - ./server/common/result.py:/app/result.py
+    - ./server/common/batching.py:/app/batching.py
+    - ./filters/query3/average_filter.py:/app/average_filter.py
+  rabbitmq:
+    container_name: rabbitmq
+    healthcheck:
+      interval: 10s
+      retries: 10
+      test: '["CMD", "curl", "-f", "http://localhost:15672"]'
+      timeout: 5s
+    image: rabbitmq:latest
+    networks:
+    - analyzer_net
+    ports:
+    - 15672:15672
+  server:
+    container_name: server
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    - weather_filter
+    - station_filter
+    - trip_filter
+    entrypoint: python3 /app/main.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: server:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/:/app/
+  station_filter:
+    container_name: station_filter
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    - joiner_query1
+    - joiner_query2
+    - joiner_query3
+    entrypoint: python3 /app/station_filter.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/common/messaging_protocol.py:/app/messaging_protocol.py
+    - ./server/common/rabbit_interface.py:/app/rabbit_interface.py
+    - ./server/common/eof.py:/app/eof.py
+    - ./server/common/eof_controller.py:/app/eof_controller.py
+    - ./server/common/result.py:/app/result.py
+    - ./server/common/batching.py:/app/batching.py
+    - ./filters/station/station_filter.py:/app/station_filter.py
+  trip_filter:
+    deploy:
+      replicas: 2
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    - joiner_query1
+    - joiner_query2
+    - joiner_query3
+    entrypoint: python3 /app/trip_filter.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/common/messaging_protocol.py:/app/messaging_protocol.py
+    - ./server/common/rabbit_interface.py:/app/rabbit_interface.py
+    - ./server/common/eof.py:/app/eof.py
+    - ./server/common/eof_controller.py:/app/eof_controller.py
+    - ./server/common/result.py:/app/result.py
+    - ./server/common/batching.py:/app/batching.py
+    - ./filters/trip/trip_filter.py:/app/trip_filter.py
+  weather_filter:
+    depends_on:
+    - rabbitmq
+    - eof_manager
+    - joiner_query1
+    - joiner_query2
+    - joiner_query3
+    deploy:
+      replicas: 1
+    entrypoint: python3 /app/weather_filter.py
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    image: python-filter:latest
+    networks:
+    - analyzer_net
+    restart: on-failure
+    volumes:
+    - ./server/common/messaging_protocol.py:/app/messaging_protocol.py
+    - ./server/common/rabbit_interface.py:/app/rabbit_interface.py
+    - ./server/common/eof.py:/app/eof.py
+    - ./server/common/eof_controller.py:/app/eof_controller.py
+    - ./server/common/result.py:/app/result.py
+    - ./server/common/batching.py:/app/batching.py
+    - ./filters/weather/weather_filter.py:/app/weather_filter.py
+version: '3.9'

@@ -71,7 +71,7 @@ def joiner(ch, method, properties, body):
     """
 
     trip = decode(body)
-    logging.info(f"action: join_callback | result: in_progress | msg: {trip} ")
+    logging.debug(f"action: join_callback | result: in_progress | msg: {trip} ")
 
     trip_start_station = (trip[TRIP_CITY_ID], trip[TRIP_START_STATION], trip[TRIP_YEAR])
 

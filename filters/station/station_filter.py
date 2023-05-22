@@ -39,7 +39,7 @@ def filter_station(ch, method, properties, body):
     """
 
     reg = decode(body)
-    logging.info(f"action: filter_callback | result: in_progress | body: {reg} ")
+    logging.debug(f"action: filter_callback | result: in_progress | body: {reg} ")
 
     if reg[CITY_IDX].lower() != Q3_CITY_FILTER and reg[YEAR_IDX] not in Q2_YEARS_FILTER:
         # Filter station
@@ -48,7 +48,7 @@ def filter_station(ch, method, properties, body):
     filtered = reg
 
     batching.publish_batch_to_topic("station_topic", encode(filtered))
-    logging.info(f"action: filter_callback | result: success | published: {filtered} ")
+    logging.debug(f"action: filter_callback | result: success | published: {filtered} ")
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)   # Instancia de RabbitInterface con un controller para el EOF

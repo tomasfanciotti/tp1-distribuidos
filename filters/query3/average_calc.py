@@ -62,7 +62,7 @@ def callback(ch, method, properties, body):
 
     key = (trip[CITY_IDX], trip[STATION_IDX])
     if key not in status:
-        logging.info(f"action: callback | result: in_progress | msg: new station.")
+        logging.debug(f"action: callback | result: in_progress | msg: new station.")
         status[key] = {"trips": 0, "distance_sum": 0}
 
     status[key]["trips"] += 1

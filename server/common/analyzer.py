@@ -1,4 +1,5 @@
 from .rabbit_interface import RabbitInterface
+from .batching import Batching
 from .messaging_protocol import *
 from .eof import EOF
 from .result import Result
@@ -47,6 +48,8 @@ class Analyzer(ServerInterface):
     def __init__(self):
         super().__init__()
         self.queries_ok = set()
+        self.batching = None
+        self.batches_received = 0
 
     def handle_client(self, s):
         """ Handle a new client
@@ -57,6 +60,7 @@ class Analyzer(ServerInterface):
         """
 
         rabbit = RabbitInterface()
+        self.batching = Batching(rabbit)
 
         while True:
             packet = receive(s)
@@ -104,8 +108,13 @@ class Analyzer(ServerInterface):
                     logging.error(
                         f'action: ingest_trips | result: fail | client: {addr[0]} | msg: Error in the ingestion of trips.')
                 else:
+                    self.batches_received += 1
+                    if self.batches_received % 1000 == 0:
+                        logging.info(
+                            f'action: ingest_strips | result: success | client: {addr[0]} | msg: received {self.batches_received} batches')
+
                     send(s, Packet.new(OP_CODE_ACK, "ACK!"))
-                    logging.info(
+                    logging.debug(
                         f'action: ingest_strips | result: success | client: {addr[0]} | msg: trips ingested correctly.')
 
             elif packet.opcode == OP_CODE_QUERY:
@@ -172,7 +181,9 @@ class Analyzer(ServerInterface):
         try:
             for i in range(batch_size):
                 reg = data[i * WEATHER_FIELDS + 1:(i + 1) * WEATHER_FIELDS]
-                rabbit.publish_queue("raw_weather_data", encode(reg))
+                self.batching.publish_batch_to_queue("raw_weather_data", encode(reg))
+
+            self.batching.push_buffer()
 
         except Exception as e:
             logging.error(
@@ -190,7 +201,9 @@ class Analyzer(ServerInterface):
 
             for i in range(batch_size):
                 reg = data[i * STATION_FIELDS + 1:(i + 1) * STATION_FIELDS]
-                rabbit.publish_queue("raw_station_data", encode(reg))
+                self.batching.publish_batch_to_queue("raw_station_data", encode(reg))
+
+            self.batching.push_buffer()
 
         except Exception as e:
             logging.error(
@@ -207,7 +220,9 @@ class Analyzer(ServerInterface):
         try:
             for i in range(batch_size):
                 reg = data[i * TRIPS_FIELDS + 1:(i + 1) * TRIPS_FIELDS]
-                rabbit.publish_queue("raw_trip_data", encode(reg))
+                self.batching.publish_batch_to_queue("raw_trip_data", encode(reg))
+
+            self.batching.push_buffer()
 
         except Exception as e:
             logging.error(

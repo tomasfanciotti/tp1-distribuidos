@@ -133,7 +133,7 @@ func batchDataProcessor(c *Client, fileName string, handler func(*Client, []Batc
             log.Infof(" expected: %v | len(campos) : %v | campos: %v", expected_fields, len(campos), campos)
 		    if batchType == "WEATHER" && city == "montreal" {
                 campos = campos[:len(campos)-1]
-                log.Infof("action: filtered year - %v",campos)
+                log.Debugf("action: filtered year - %v",campos)
             }else{
                 log.Infof("action: scan_batch_file | result: warning | msg: line fields does not match with a expected register. Found: %v in { %v }  ignoring..", len(campos), campos)
                 continue

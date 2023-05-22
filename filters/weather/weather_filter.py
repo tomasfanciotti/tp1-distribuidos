@@ -38,7 +38,7 @@ def filter_weather(ch, method, properties, body):
     """
 
     reg = decode(body)
-    logging.info(f"action: filter_callback | result: in_progress | body: {reg} ")
+    logging.debug(f"action: filter_callback | result: in_progress | body: {reg} ")
 
     if float(reg[PRECTOT_INDEX]) > PRECTOT_TRESHOLD:
 
@@ -46,7 +46,7 @@ def filter_weather(ch, method, properties, body):
         batching.publish_batch_to_topic("weather_topic", encode(filtered))
         logging.info(f"action: filter_callback | result: in_progress | filtered: {filtered} ")
 
-    logging.info(f"action: filter_callback | result: success ")
+    logging.debug(f"action: filter_callback | result: success ")
 
 
 rabbit = EOFController(STAGE, NODE_ID, on_eof=log_eof)   # Instancia de RabbitInterface con un controller para el EOF

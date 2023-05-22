@@ -42,11 +42,11 @@ def callback(ch, method, properties, body):
     year = trip[YEAR_IDX]
 
     if station not in status:
-        logging.info(f"action: filter_callback | result: in_progress | msg: new station-year key stored ")
+        logging.debug(f"action: filter_callback | result: in_progress | msg: new station-year key stored ")
         status[station] = {'2016': 0, '2017': 0}
 
     if year not in status[station]:
-        logging.warning(f"action: filter_callback | result: warning | msg: invalid YEAR ID. Ignoring.. ")
+        logging.debug(f"action: filter_callback | result: warning | msg: invalid YEAR ID. Ignoring.. ")
         return
 
     status[station][year] += 1
@@ -68,7 +68,7 @@ def filter_results(ch, method, properties, body):
             data = [station[0], station[1], str(trips_2016), str(trips_2017)]
             result = Result.query2(encode(data))
             rabbit.publish_queue("query_results", result.encode())
-            logging.info(
+            logging.debug(
                 f"action: response_enqueue | result: success | city SELECETED: {station[0]} | station: {station[1]} "
                 f"| 2016: {trips_2016} | 2017: {trips_2017} ")
 
